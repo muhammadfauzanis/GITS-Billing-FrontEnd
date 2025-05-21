@@ -24,55 +24,6 @@ import {
 } from '@/components/ui/select';
 import { getProjectBreakdown } from '@/lib/api';
 
-// Mock data for development without API
-const mockProjectData = {
-  breakdown: [
-    {
-      service: 'Compute Engine',
-      value: 'Rp 3.917.461,65',
-      rawValue: 3917461.6522520026,
-    },
-    {
-      service: 'Cloud Data Fusion',
-      value: 'Rp 1.904.835,84',
-      rawValue: 1904835.8358900005,
-    },
-    {
-      service: 'Cloud Monitoring',
-      value: 'Rp 215.181,83',
-      rawValue: 215181.83332200005,
-    },
-    {
-      service: 'BigQuery',
-      value: 'Rp 185.177,07',
-      rawValue: 185177.07164099996,
-    },
-    { service: 'Dataplex', value: 'Rp 116.946,67', rawValue: 116946.666474 },
-    {
-      service: 'Cloud Storage',
-      value: 'Rp 58.089,56',
-      rawValue: 58089.56221400002,
-    },
-    { service: 'Artifact Registry', value: 'Rp 260,74', rawValue: 260.738464 },
-    {
-      service: 'Cloud Run Functions',
-      value: 'Rp 0,62',
-      rawValue: 0.6181399999999718,
-    },
-    { service: 'Cloud Scheduler', value: 'Rp 0', rawValue: 0 },
-    { service: 'Networking', value: 'Rp 0', rawValue: 0 },
-    {
-      service: 'Cloud Logging',
-      value: '-Rp 0',
-      rawValue: -1.6940658945086007e-21,
-    },
-  ],
-  total: {
-    value: 'Rp 6.397.953,98',
-    rawValue: 6397953.978397002,
-  },
-};
-
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [projectData, setProjectData] = useState<any>(null);
@@ -90,10 +41,6 @@ export default function ProjectDetailPage() {
       try {
         setIsLoading(true);
         setError(null);
-
-        console.log(selectedMonth);
-        console.log(selectedYear);
-        console.log(id);
 
         const breakdownData = await getProjectBreakdown(
           id as string,

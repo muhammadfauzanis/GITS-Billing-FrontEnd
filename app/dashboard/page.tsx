@@ -17,57 +17,9 @@ import { AlertCircle } from 'lucide-react';
 import {
   getBillingSummary,
   getClientProjects,
+  getMonthlyUsage,
   getOverallServiceBreakdown,
 } from '@/lib/api';
-
-const mockMonthlyUsage = {
-  data: [
-    {
-      id: 'Compute Engine',
-      name: 'Compute Engine',
-      months: {
-        'Mei 2025': 31456864.254132006,
-        'April 2025': 66790559.38494999,
-        'Maret 2025': 66231992.57080698,
-        'Februari 2025': 58142873.741754,
-        'Januari 2025': 0,
-        'Desember 2024': 0,
-      },
-    },
-    {
-      id: 'Cloud SQL',
-      name: 'Cloud SQL',
-      months: {
-        'Mei 2025': 2604090.8672660002,
-        'April 2025': 8971159.992072005,
-        'Maret 2025': 10086580.828782003,
-        'Februari 2025': 9180253.950640006,
-        'Januari 2025': 0,
-        'Desember 2024': 0,
-      },
-    },
-    {
-      id: 'Cloud Data Fusion',
-      name: 'Cloud Data Fusion',
-      months: {
-        'Mei 2025': 1904835.8358900005,
-        'April 2025': 4195399.745933,
-        'Maret 2025': 4253855.710645,
-        'Februari 2025': 3807094.2515530013,
-        'Januari 2025': 0,
-        'Desember 2024': 0,
-      },
-    },
-  ],
-  months: [
-    'Mei 2025',
-    'April 2025',
-    'Maret 2025',
-    'Februari 2025',
-    'Januari 2025',
-    'Desember 2024',
-  ],
-};
 
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
@@ -86,17 +38,23 @@ export default function DashboardPage() {
         setIsLoading(true);
         setError(null);
 
-        const [summaryResponse, projectsResponse] = await Promise.all([
+        const [
+          summaryResponse,
+          breakdownResponse,
+          usageResponse,
+          projectsResponse,
+        ] = await Promise.all([
           getBillingSummary(),
-          // getOverallServiceBreakdown(currentMonth, currentYear),
-          // getMonthlyUsage("service", 6),
+          getOverallServiceBreakdown(currentMonth, currentYear),
+          getMonthlyUsage('service', 6),
           getClientProjects(),
         ]);
 
         setSummaryData(summaryResponse);
-        // setServiceBreakdown(breakdownResponse);
-        // setMonthlyUsage(usageResponse);
+        setServiceBreakdown(breakdownResponse);
+        setMonthlyUsage(usageResponse);
         setProjects(projectsResponse.projects);
+        console.log(usageResponse);
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
         setError(err.message || 'Gagal memuat data dashboard');
