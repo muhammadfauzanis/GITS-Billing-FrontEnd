@@ -14,61 +14,11 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { getBillingSummary } from '@/lib/api';
-
-// Mock data for development without API
-// const mockSummaryData = {
-//   currentMonth: {
-//     value: 'Rp 40.666.136,55',
-//     rawValue: 40666136.551674,
-//     percentageChange: '-55.3',
-//   },
-//   lastMonth: {
-//     value: 'Rp 90.903.396,75',
-//     rawValue: 90903396.74675003,
-//     label: 'Periode sebelumnya',
-//   },
-//   projection: {
-//     value: 'Rp 66.350.012,27',
-//     rawValue: 66350012.26852074,
-//     label: 'Estimasi akhir bulan',
-//   },
-//   budget: {
-//     value: 'Rp 1.500.000',
-//     rawValue: 1500000,
-//     percentage: 2711,
-//     label: '2711% dari budget',
-//   },
-// };
-
-const mockServiceBreakdown = [
-  {
-    service: 'Compute Engine',
-    value: 'Rp 31.456.864,25',
-    rawValue: 31456864.254132006,
-  },
-  {
-    service: 'Cloud SQL',
-    value: 'Rp 2.604.090,87',
-    rawValue: 2604090.8672660002,
-  },
-  {
-    service: 'Cloud Data Fusion',
-    value: 'Rp 1.904.835,84',
-    rawValue: 1904835.8358900005,
-  },
-  { service: 'Networking', value: 'Rp 1.538.248,43', rawValue: 1538248.430035 },
-  {
-    service: 'Cloud Filestore',
-    value: 'Rp 1.428.366,1',
-    rawValue: 1428366.0970089994,
-  },
-  {
-    service: 'Cloud Monitoring',
-    value: 'Rp 593.707,03',
-    rawValue: 593707.0340140002,
-  },
-];
+import {
+  getBillingSummary,
+  getClientProjects,
+  getOverallServiceBreakdown,
+} from '@/lib/api';
 
 const mockMonthlyUsage = {
   data: [
@@ -119,29 +69,6 @@ const mockMonthlyUsage = {
   ],
 };
 
-const mockProjects = [
-  {
-    id: 145,
-    project_id: 'lakehouse-btcw',
-  },
-  {
-    id: 168,
-    project_id: 'bahanalink',
-  },
-  {
-    id: 81,
-    project_id: 'btcwadmin',
-  },
-  {
-    id: 131,
-    project_id: 'btcw-api',
-  },
-  {
-    id: 22,
-    project_id: 'btcw-bo',
-  },
-];
-
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [serviceBreakdown, setServiceBreakdown] = useState<any[]>([]);
@@ -159,31 +86,17 @@ export default function DashboardPage() {
         setIsLoading(true);
         setError(null);
 
-        const summaryResponse = await getBillingSummary();
-        setSummaryData(summaryResponse);
-
-        // ⛔ Mock data for other parts (belum aktif API-nya)
-        // setServiceBreakdown(mockServiceBreakdown);
-        // setMonthlyUsage(mockMonthlyUsage);
-        // setProjects(mockProjects);
-
-        // Simulate API delay (optional)
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // 📝 Uncomment below if you're ready to use real data for all
-        /*
-        const [summaryResponse, breakdownResponse, usageResponse, projectsResponse] = await Promise.all([
+        const [summaryResponse, projectsResponse] = await Promise.all([
           getBillingSummary(),
-          getOverallServiceBreakdown(currentMonth, currentYear),
-          getMonthlyUsage("service", 6),
+          // getOverallServiceBreakdown(currentMonth, currentYear),
+          // getMonthlyUsage("service", 6),
           getClientProjects(),
         ]);
-    
+
         setSummaryData(summaryResponse);
-        setServiceBreakdown(breakdownResponse);
-        setMonthlyUsage(usageResponse);
+        // setServiceBreakdown(breakdownResponse);
+        // setMonthlyUsage(usageResponse);
         setProjects(projectsResponse.projects);
-        */
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
         setError(err.message || 'Gagal memuat data dashboard');

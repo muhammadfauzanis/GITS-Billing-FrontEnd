@@ -1,30 +1,39 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import Link from "next/link"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, ExternalLink } from "lucide-react"
+import { useState } from 'react';
+import Link from 'next/link';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Search, ExternalLink } from 'lucide-react';
 
 interface ProjectsListProps {
   projects: Array<{
-    id: number
-    project_id: string
-    name?: string
-    description?: string
-  }>
+    id: number;
+    projectId: string;
+    name?: string;
+    description?: string;
+  }>;
 }
 
 export function ProjectsList({ projects }: ProjectsListProps) {
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('');
 
   const filteredProjects = projects.filter(
     (project) =>
-      project.project_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (project.name && project.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+      project.projectId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (project.name &&
+        project.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (project.description &&
+        project.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="space-y-4">
@@ -53,10 +62,12 @@ export function ProjectsList({ projects }: ProjectsListProps) {
             {filteredProjects.length > 0 ? (
               filteredProjects.map((project) => (
                 <TableRow key={project.id}>
-                  <TableCell className="font-medium">{project.project_id}</TableCell>
+                  <TableCell className="font-medium">
+                    {project.projectId}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="ghost" size="sm">
-                      <Link href={`/dashboard/projects/${project.project_id}`}>
+                      <Link href={`/dashboard/projects/${project.projectId}`}>
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Detail
                       </Link>
@@ -75,5 +86,5 @@ export function ProjectsList({ projects }: ProjectsListProps) {
         </Table>
       </div>
     </div>
-  )
+  );
 }
