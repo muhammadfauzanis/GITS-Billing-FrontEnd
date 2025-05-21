@@ -68,7 +68,6 @@ export function BillingOverview({ data }: BillingOverviewProps) {
         </div>
       </div>
 
-      {/* Last Month */}
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-gray-500">Bulan Lalu</p>
@@ -82,7 +81,6 @@ export function BillingOverview({ data }: BillingOverviewProps) {
         </div>
       </div>
 
-      {/* Projection */}
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-gray-500">Proyeksi</p>
@@ -96,7 +94,6 @@ export function BillingOverview({ data }: BillingOverviewProps) {
         </div>
       </div>
 
-      {/* Budget */}
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-gray-500">Budget</p>

@@ -154,14 +154,12 @@ export default function DashboardPage() {
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
-    console.log('error');
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
         const summaryResponse = await getBillingSummary();
-        console.log(summaryResponse);
         setSummaryData(summaryResponse);
 
         // ⛔ Mock data for other parts (belum aktif API-nya)
