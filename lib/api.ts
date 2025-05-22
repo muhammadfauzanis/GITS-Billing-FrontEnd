@@ -133,6 +133,33 @@ export const getOverallServiceBreakdown = async (
   }
 };
 
+export const getAllProjectBreakdown = async (month: number, year: number) => {
+  try {
+    const queryParams = new URLSearchParams({
+      month: month.toString(),
+      year: year.toString(),
+    });
+
+    const response = await fetch(
+      `${BASE_API_URL}/billing/project-total?${queryParams}`,
+      {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch all project breakdown');
+    }
+
+    return await response.json(); // expected to return { breakdown: [...], total: { ... } }
+  } catch (error) {
+    console.error('Get all project breakdown error:', error);
+    throw error;
+  }
+};
+
 export const getBillingSummary = async () => {
   try {
     const response = await fetch(`${BASE_API_URL}/billing/summary`, {

@@ -5,6 +5,7 @@ import { BillingOverview } from '@/components/billing-overview';
 import { BillingUsageChart } from '@/components/billing-usage-chart';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
 import { ProjectsList } from '@/components/projects-list';
+import { BillingProjectBreakdown } from '@/components/billing-project-breakdown'; // pastikan ini sudah ada
 import {
   Card,
   CardContent,
@@ -15,15 +16,18 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import {
+  getAllProjectBreakdown,
   getBillingSummary,
   getClientProjects,
   getMonthlyUsage,
   getOverallServiceBreakdown,
+  getProjectBreakdown,
 } from '@/lib/api';
 
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [serviceBreakdown, setServiceBreakdown] = useState<any[]>([]);
+  const [projectBreakdown, setProjectBreakdown] = useState<any>(null);
   const [monthlyUsage, setMonthlyUsage] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,18 +47,20 @@ export default function DashboardPage() {
           breakdownResponse,
           usageResponse,
           projectsResponse,
+          projectsUsageBreakdown,
         ] = await Promise.all([
           getBillingSummary(),
           getOverallServiceBreakdown(currentMonth, currentYear),
           getMonthlyUsage('service', 6),
           getClientProjects(),
+          getAllProjectBreakdown(currentMonth, currentYear),
         ]);
 
         setSummaryData(summaryResponse);
         setServiceBreakdown(breakdownResponse);
         setMonthlyUsage(usageResponse);
-        setProjects(projectsResponse.projects);
-        console.log(usageResponse);
+        setProjects(projectsResponse.projects || []);
+        setProjectBreakdown(projectsUsageBreakdown);
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
         setError(err.message || 'Gagal memuat data dashboard');
@@ -94,16 +100,20 @@ export default function DashboardPage() {
       {summaryData && <BillingOverview data={summaryData} />}
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="border shadow-sm">
+        <Card className="border shadow-sm overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle>Tren Penggunaan</CardTitle>
-            <CardDescription>
-              Penggunaan GCP selama 6 bulan terakhir
-            </CardDescription>
+            <CardTitle>Top 5 Project</CardTitle>
+            <CardDescription>Biaya 5 project teratas bulan ini</CardDescription>
           </CardHeader>
-          <CardContent>
-            {monthlyUsage ? (
-              <BillingUsageChart data={monthlyUsage} />
+          <CardContent className="min-h-[450px]">
+            {projectBreakdown?.breakdown &&
+            projectBreakdown.breakdown.length > 0 ? (
+              <BillingProjectBreakdown
+                data={projectBreakdown}
+                showControls={false}
+                showSearch={false}
+                showAll={false}
+              />
             ) : (
               <div className="flex h-[300px] items-center justify-center">
                 Tidak ada data tersedia
