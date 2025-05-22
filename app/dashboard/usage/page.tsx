@@ -20,11 +20,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getMonthlyUsage, getOverallServiceBreakdown } from '@/lib/api';
+import {
+  getAllProjectBreakdown,
+  getMonthlyUsage,
+  getOverallServiceBreakdown,
+} from '@/lib/api';
+import { BillingProjectBreakdown } from '@/components/billing-project-breakdown';
 
 export default function UsagePage() {
   const [monthlyUsage, setMonthlyUsage] = useState<any>(null);
   const [serviceBreakdown, setServiceBreakdown] = useState<any[]>([]);
+  const [projectBreakdown, setProjectBreakdown] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects'>(
+    'overview'
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number>(
@@ -42,15 +51,24 @@ export default function UsagePage() {
         setIsLoading(true);
         setError(null);
 
-        const [usageResponse, breakdownResponse] = await Promise.all([
+        const commonRequests = [
           getMonthlyUsage(groupBy, Number.parseInt(timeRange)),
           getOverallServiceBreakdown(selectedMonth, selectedYear),
-        ]);
+        ];
 
-        console.log(breakdownResponse);
+        const [usageResponse, breakdownResponse, projectsUsageBreakdown] =
+          await Promise.all([
+            ...commonRequests,
+            activeTab === 'projects'
+              ? getAllProjectBreakdown(selectedMonth, selectedYear)
+              : Promise.resolve(null),
+          ]);
 
         setMonthlyUsage(usageResponse);
         setServiceBreakdown(breakdownResponse);
+        if (activeTab === 'projects' && projectsUsageBreakdown) {
+          setProjectBreakdown(projectsUsageBreakdown);
+        }
       } catch (err: any) {
         console.error('Error fetching usage data:', err);
         setError(err.message || 'Gagal memuat data penggunaan');
@@ -60,7 +78,7 @@ export default function UsagePage() {
     };
 
     fetchUsageData();
-  }, [selectedMonth, selectedYear, groupBy, timeRange]);
+  }, [selectedMonth, selectedYear, groupBy, timeRange, activeTab]);
 
   const handleMonthChange = (value: string) => {
     setSelectedMonth(Number.parseInt(value));
@@ -158,13 +176,13 @@ export default function UsagePage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="overview">
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => setActiveTab(val as 'overview' | 'projects')}
+      >
         <TabsList>
-          <TabsTrigger value="overview">Ringkasan</TabsTrigger>
-          <TabsTrigger value="compute">Compute</TabsTrigger>
-          <TabsTrigger value="storage">Storage</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
-          <TabsTrigger value="networking">Networking</TabsTrigger>
+          <TabsTrigger value="overview">Service Overview</TabsTrigger>
+          <TabsTrigger value="projects">Project Overview</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -235,66 +253,20 @@ export default function UsagePage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="compute" className="pt-4">
+        <TabsContent value="projects" className="space-y-6 pt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Penggunaan Compute Engine</CardTitle>
-              <CardDescription>
-                Detail penggunaan layanan komputasi
-              </CardDescription>
+              <CardTitle>Penggunaan Project</CardTitle>
+              <CardDescription>Biaya per project untuk bulan</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detail penggunaan Compute Engine akan ditampilkan di sini.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="storage" className="pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Penggunaan Storage</CardTitle>
-              <CardDescription>
-                Detail penggunaan layanan penyimpanan
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detail penggunaan Storage akan ditampilkan di sini.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="database" className="pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Penggunaan Database</CardTitle>
-              <CardDescription>
-                Detail penggunaan layanan database
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detail penggunaan Database akan ditampilkan di sini.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="networking" className="pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Penggunaan Networking</CardTitle>
-              <CardDescription>
-                Detail penggunaan layanan jaringan
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detail penggunaan Networking akan ditampilkan di sini.
-              </p>
+              {projectBreakdown ? (
+                <BillingProjectBreakdown data={projectBreakdown} showAll />
+              ) : (
+                <div className="flex h-[300px] items-center justify-center">
+                  Tidak ada data tersedia
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

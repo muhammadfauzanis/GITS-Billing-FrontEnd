@@ -110,7 +110,6 @@ export default function DashboardPage() {
             projectBreakdown.breakdown.length > 0 ? (
               <BillingProjectBreakdown
                 data={projectBreakdown}
-                showControls={false}
                 showSearch={false}
                 showAll={false}
               />

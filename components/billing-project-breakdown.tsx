@@ -19,13 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
@@ -41,10 +34,6 @@ interface ProjectBreakdownProps {
       rawValue: number;
     };
   };
-  onMonthChange?: (month: string, year: string) => void;
-  selectedMonth?: string;
-  selectedYear?: string;
-  showControls?: boolean;
   showSearch?: boolean;
   showAll?: boolean;
 }
@@ -70,17 +59,12 @@ const formatValue = (value: number) => {
 
 export function BillingProjectBreakdown({
   data,
-  onMonthChange,
-  selectedMonth,
-  selectedYear,
-  showControls = true,
   showSearch = true,
   showAll = false,
 }: ProjectBreakdownProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const breakdownData = Array.isArray(data?.breakdown) ? data.breakdown : [];
-
   const sortedData = [...breakdownData].sort((a, b) => b.rawValue - a.rawValue);
   const chartData = showAll ? sortedData : sortedData.slice(0, 5);
   const tableData = showAll ? sortedData : sortedData.slice(0, 5);
@@ -98,65 +82,13 @@ export function BillingProjectBreakdown({
         : item.service,
   }));
 
-  const months = [
-    { value: '1', label: 'Januari' },
-    { value: '2', label: 'Februari' },
-    { value: '3', label: 'Maret' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'Mei' },
-    { value: '6', label: 'Juni' },
-    { value: '7', label: 'Juli' },
-    { value: '8', label: 'Agustus' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'Oktober' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'Desember' },
-  ];
-
-  const years = ['2023', '2024', '2025'];
-
   return (
-    <div className="space-y-4">
-      {showControls && onMonthChange && (
-        <div className="flex gap-2">
-          <Select
-            value={selectedMonth}
-            onValueChange={(val) => onMonthChange(val, selectedYear!)}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Pilih bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedYear}
-            onValueChange={(val) => onMonthChange!(selectedMonth!, val)}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="Pilih tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
+    <div className="space-y-6">
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={topProjects}
-            margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+            margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
