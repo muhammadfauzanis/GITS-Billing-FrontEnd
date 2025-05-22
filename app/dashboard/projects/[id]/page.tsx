@@ -186,7 +186,7 @@ export default function ProjectDetailPage() {
             </CardHeader>
             <CardContent>
               {projectData?.breakdown && projectData.breakdown.length > 0 ? (
-                <BillingServiceBreakdown data={projectData.breakdown} />
+                <BillingServiceBreakdown data={projectData.breakdown} showAll />
               ) : (
                 <div className="flex h-[300px] items-center justify-center">
                   Tidak ada data tersedia

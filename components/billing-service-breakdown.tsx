@@ -23,9 +23,9 @@ interface ServiceBreakdownProps {
     value: string;
     rawValue: number;
   }>;
+  showAll?: boolean;
 }
 
-// Predefined colors for services
 const COLORS = [
   '#0ea5e9',
   '#8b5cf6',
@@ -44,24 +44,21 @@ const COLORS = [
   '#f43f5e',
 ];
 
-export function BillingServiceBreakdown({ data }: ServiceBreakdownProps) {
-  // Sort data by rawValue in descending order
+export function BillingServiceBreakdown({
+  data,
+  showAll = false,
+}: ServiceBreakdownProps) {
   const sortedData = [...data].sort((a, b) => b.rawValue - a.rawValue);
-
-  // Take top 10 services for the chart
-  const topServices = sortedData.slice(0, 10);
-
-  // Calculate total
+  const chartServices = showAll ? sortedData : sortedData.slice(0, 10);
+  const tableServices = showAll ? sortedData : sortedData.slice(0, 5);
   const total = sortedData.reduce((sum, item) => sum + item.rawValue, 0);
 
-  // Assign colors to each service
-  const dataWithColors = topServices.map((item, index) => ({
+  const dataWithColors = chartServices.map((item, index) => ({
     ...item,
     color: COLORS[index % COLORS.length],
     percent: (item.rawValue / total) * 100,
   }));
 
-  // Custom rendering for pie chart labels
   const renderCustomizedLabel = ({
     cx,
     cy,
@@ -70,14 +67,12 @@ export function BillingServiceBreakdown({ data }: ServiceBreakdownProps) {
     outerRadius,
     percent,
     index,
-    name,
   }: any) => {
     const RADIAN = Math.PI / 180;
     const radius = outerRadius + 10;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    // Only show labels for segments with percent > 3%
     if (percent < 0.03) return null;
 
     return (
@@ -95,89 +90,78 @@ export function BillingServiceBreakdown({ data }: ServiceBreakdownProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="h-[220px] flex justify-center">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={dataWithColors}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              paddingAngle={2}
-              dataKey="rawValue"
-              nameKey="service"
-              label={renderCustomizedLabel}
-              labelLine={false}
-              isAnimationActive={false}
-            >
-              {dataWithColors.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value: number, name: string) => [
-                `Rp ${value.toLocaleString('id-ID', {
-                  maximumFractionDigits: 0,
-                })}`,
-                name,
-              ]}
-              contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                padding: '8px',
-              }}
-            />
-            <Legend
-              layout="vertical"
-              align="right"
-              verticalAlign="middle"
-              iconType="circle"
-              iconSize={8}
-              formatter={(value, entry, index) => (
-                <span style={{ color: '#374151', fontSize: '12px' }}>
-                  {value}
-                </span>
-              )}
-              wrapperStyle={{ paddingLeft: '10px' }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+    <div className="space-y-6">
+      {/* Pie Chart & Legend */}
+      <div className="flex flex-col xl:flex-row gap-4 items-center justify-center">
+        <div className="h-[300px] w-full flex justify-center items-center">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={dataWithColors}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={2}
+                dataKey="rawValue"
+                nameKey="service"
+                label={renderCustomizedLabel}
+                labelLine={false}
+                isAnimationActive={false}
+              >
+                {dataWithColors.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  `Rp ${value.toLocaleString('id-ID', {
+                    maximumFractionDigits: 0,
+                  })}`,
+                  name,
+                ]}
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                  padding: '8px',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      <div className="mt-4">
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Layanan</TableHead>
-                <TableHead className="text-right">Biaya</TableHead>
+      {/* Table */}
+      <div className="rounded-md border max-h-[400px] overflow-y-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Layanan</TableHead>
+              <TableHead className="text-right">Biaya</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tableServices.map((service) => (
+              <TableRow key={service.service}>
+                <TableCell className="flex items-center gap-2">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{
+                      backgroundColor:
+                        dataWithColors.find(
+                          (s) => s.service === service.service
+                        )?.color || '#6b7280',
+                    }}
+                  />
+                  <span>{service.service}</span>
+                </TableCell>
+                <TableCell className="text-right">{service.value}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedData.slice(0, 5).map((service) => (
-                <TableRow key={service.service}>
-                  <TableCell className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{
-                        backgroundColor:
-                          dataWithColors.find(
-                            (s) => s.service === service.service
-                          )?.color || '#6b7280',
-                      }}
-                    />
-                    <span>{service.service}</span>
-                  </TableCell>
-                  <TableCell className="text-right">{service.value}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

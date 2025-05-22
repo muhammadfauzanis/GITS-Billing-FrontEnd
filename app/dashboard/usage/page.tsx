@@ -48,7 +48,6 @@ export default function UsagePage() {
         ]);
 
         console.log(breakdownResponse);
-        console.log(timeRange);
 
         setMonthlyUsage(usageResponse);
         setServiceBreakdown(breakdownResponse);
@@ -226,7 +225,7 @@ export default function UsagePage() {
             </CardHeader>
             <CardContent>
               {serviceBreakdown && serviceBreakdown.length > 0 ? (
-                <BillingServiceBreakdown data={serviceBreakdown} />
+                <BillingServiceBreakdown data={serviceBreakdown} showAll />
               ) : (
                 <div className="flex h-[300px] items-center justify-center">
                   Tidak ada data tersedia
