@@ -59,32 +59,29 @@ export function BillingServiceBreakdown({
     percent: (item.rawValue / total) * 100,
   }));
 
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-    index,
-  }: any) => {
+  const renderCustomizedLabel = (props: any) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, index } = props;
+
     const RADIAN = Math.PI / 180;
     const radius = outerRadius + 10;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    if (percent < 0.03) return null;
+    const entry = dataWithColors[index];
+    const percent = entry.percent;
+
+    if (percent < 3) return null;
 
     return (
       <text
         x={x}
         y={y}
-        fill={COLORS[index % COLORS.length]}
+        fill={entry.color}
         textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize={12}
       >
-        {`${(percent * 100).toFixed(0)}%`}
+        {`${percent.toFixed(0)}%`}
       </text>
     );
   };
