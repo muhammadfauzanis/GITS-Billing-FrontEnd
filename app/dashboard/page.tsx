@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { BillingOverview } from '@/components/billing-overview';
 import { BillingUsageChart } from '@/components/billing-usage-chart';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
@@ -18,6 +18,7 @@ import { AlertCircle } from 'lucide-react';
 import {
   getAllProjectBreakdown,
   getBillingSummary,
+  getClientName,
   getClientProjects,
   getMonthlyUsage,
   getOverallServiceBreakdown,
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [projectBreakdown, setProjectBreakdown] = useState<any>(null);
   const [monthlyUsage, setMonthlyUsage] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
+  const [clientName, setClientName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +50,14 @@ export default function DashboardPage() {
           usageResponse,
           projectsResponse,
           projectsUsageBreakdown,
+          clientNameResponse,
         ] = await Promise.all([
           getBillingSummary(),
           getOverallServiceBreakdown(currentMonth, currentYear),
           getMonthlyUsage('service', 6),
           getClientProjects(),
           getAllProjectBreakdown(currentMonth, currentYear),
+          getClientName(),
         ]);
 
         setSummaryData(summaryResponse);
@@ -61,6 +65,7 @@ export default function DashboardPage() {
         setMonthlyUsage(usageResponse);
         setProjects(projectsResponse.projects || []);
         setProjectBreakdown(projectsUsageBreakdown);
+        setClientName(clientNameResponse.name);
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
         setError(err.message || 'Gagal memuat data dashboard');
@@ -84,6 +89,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard Billing</h1>
+        {clientName && <h3 className="text-lg">{clientName}</h3>}
         <p className="text-muted-foreground">
           Ringkasan penggunaan dan biaya GCP Anda
         </p>

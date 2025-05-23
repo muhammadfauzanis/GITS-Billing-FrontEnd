@@ -153,7 +153,7 @@ export const getAllProjectBreakdown = async (month: number, year: number) => {
       throw new Error(error.message || 'Failed to fetch all project breakdown');
     }
 
-    return await response.json(); // expected to return { breakdown: [...], total: { ... } }
+    return await response.json();
   } catch (error) {
     console.error('Get all project breakdown error:', error);
     throw error;
@@ -206,6 +206,73 @@ export const getMonthlyUsage = async (
     return await response.json();
   } catch (error) {
     console.error('Get monthly usage error:', error);
+    throw error;
+  }
+};
+
+export const getClientName = async (clientNameResponse?: any) => {
+  try {
+    const response = await fetch(`${BASE_API_URL}/user/client-name`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch client name');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.log('Get client name error', error);
+    throw error;
+  }
+};
+
+export const getBudget = async () => {
+  try {
+    const response = await fetch(`${BASE_API_URL}/billing/budget`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch budget');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Get budget error:', error);
+    throw error;
+  }
+};
+
+export const setBudget = async (data: {
+  budget_value?: number;
+  budget_threshold?: number;
+}) => {
+  try {
+    const response = await fetch(`${BASE_API_URL}/billing/budget`, {
+      method: 'PATCH',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to save budget');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Save budget error:', error);
     throw error;
   }
 };
