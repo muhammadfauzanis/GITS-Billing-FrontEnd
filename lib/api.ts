@@ -1,7 +1,5 @@
-// API base URL - ganti dengan URL API Anda
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL!;
 
-// Helper untuk menambahkan token ke request headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
   return {
