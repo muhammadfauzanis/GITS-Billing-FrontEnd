@@ -19,16 +19,16 @@ async function verifyToken(token: string) {
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
-  console.log(token);
+  console.log('token', token);
   const { pathname } = request.nextUrl;
 
   const isAdminPath = pathname.startsWith('/admin');
   const isDashboardPath = pathname.startsWith('/dashboard');
   const isRootPath = pathname === '/';
 
-  if (!token && (isAdminPath || isDashboardPath)) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
+  // if (!token && (isAdminPath || isDashboardPath)) {
+  //   return NextResponse.redirect(new URL('/', request.url));
+  // }
 
   // Token exists → verify
   if (token) {
