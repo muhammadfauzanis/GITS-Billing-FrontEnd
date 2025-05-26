@@ -30,28 +30,28 @@ export async function middleware(request: NextRequest) {
   //   return NextResponse.redirect(new URL('/', request.url));
   // }
 
-  // Token exists → verify
-  if (token) {
-    const decoded = await verifyToken(token);
+  // // Token exists → verify
+  // if (token) {
+  //   const decoded = await verifyToken(token);
 
-    if (!decoded) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
+  //   if (!decoded) {
+  //     return NextResponse.redirect(new URL('/', request.url));
+  //   }
 
-    const role = (decoded as any).role;
+  //   const role = (decoded as any).role;
 
-    if (isAdminPath && role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
+  //   if (isAdminPath && role !== 'admin') {
+  //     return NextResponse.redirect(new URL('/dashboard', request.url));
+  //   }
 
-    if (isRootPath) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
+  //   if (isRootPath) {
+  //     return NextResponse.redirect(new URL('/dashboard', request.url));
+  //   }
+  // }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/admin/:path*'],
+  matcher: ['/', '/admin/:path*'],
 };
