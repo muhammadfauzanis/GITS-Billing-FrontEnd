@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
-    window.location.href = redirectTo;
+    router.push(redirectTo);
   };
 
   const logout = () => {

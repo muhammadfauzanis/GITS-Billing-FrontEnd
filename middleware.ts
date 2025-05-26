@@ -19,13 +19,13 @@ async function verifyToken(token: string) {
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
+  console.log(token);
   const { pathname } = request.nextUrl;
 
   const isAdminPath = pathname.startsWith('/admin');
   const isDashboardPath = pathname.startsWith('/dashboard');
   const isRootPath = pathname === '/';
 
-  // Redirect if token is missing and accessing protected routes
   if (!token && (isAdminPath || isDashboardPath)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
