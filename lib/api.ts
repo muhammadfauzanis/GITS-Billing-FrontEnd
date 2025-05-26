@@ -4,7 +4,7 @@ const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL!;
 
 const axiosInstance = axios.create({
   baseURL: BASE_API_URL,
-  withCredentials: true, // penting untuk cookie
+  withCredentials: true,
 });
 
 axiosInstance.interceptors.request.use((config) => {
