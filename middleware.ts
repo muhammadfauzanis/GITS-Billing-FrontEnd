@@ -19,39 +19,32 @@ async function verifyToken(token: string) {
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
-  console.log('token', token);
   const { pathname } = request.nextUrl;
 
-  const isAdminPath = pathname.startsWith('/admin');
-  const isDashboardPath = pathname.startsWith('/dashboard');
-  const isRootPath = pathname === '/';
+  const isProtected = pathname === '/' || pathname.startsWith('/dashboard');
 
-  // if (!token && (isAdminPath || isDashboardPath)) {
-  //   return NextResponse.redirect(new URL('/', request.url));
-  // }
+  // Redirect if trying to access protected route without token
+  if (isProtected && !token) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
 
-  // // Token exists → verify
-  // if (token) {
-  //   const decoded = await verifyToken(token);
+  if (token) {
+    const decoded = await verifyToken(token);
+    if (!decoded) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
 
-  //   if (!decoded) {
-  //     return NextResponse.redirect(new URL('/', request.url));
-  //   }
+    const role = (decoded as any).role;
 
-  //   const role = (decoded as any).role;
-
-  //   if (isAdminPath && role !== 'admin') {
-  //     return NextResponse.redirect(new URL('/dashboard', request.url));
-  //   }
-
-  //   if (isRootPath) {
-  //     return NextResponse.redirect(new URL('/dashboard', request.url));
-  //   }
-  // }
+    // Optional: Block /admin route if not admin
+    if (pathname.startsWith('/admin') && role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*'],
 };
