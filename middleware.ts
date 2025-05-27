@@ -23,7 +23,6 @@ export async function middleware(request: NextRequest) {
 
   const isProtected = pathname === '/' || pathname.startsWith('/dashboard');
 
-  // Redirect if trying to access protected route without token
   if (isProtected && !token) {
     return NextResponse.redirect(new URL('/', request.url));
   }
@@ -36,7 +35,6 @@ export async function middleware(request: NextRequest) {
 
     const role = (decoded as any).role;
 
-    // Optional: Block /admin route if not admin
     if (pathname.startsWith('/admin') && role !== 'admin') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }

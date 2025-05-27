@@ -36,7 +36,6 @@ export function LoginForm() {
       login(response.token, response.user);
     } catch (error: any) {
       setError(error.message || 'Login gagal. Silakan coba lagi.');
-    } finally {
       setIsLoading(false);
     }
   };

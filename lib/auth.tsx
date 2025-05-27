@@ -20,7 +20,6 @@ type AuthContextType = {
   logout: () => void;
 };
 
-// Perbaikan: Memberikan nilai default untuk AuthContext
 const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
@@ -36,13 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in on mount
     const checkAuth = () => {
-      // First check localStorage for backward compatibility
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
 
-      // Then check cookies (preferred method)
       const cookieToken = getCookie('token');
       const cookieUser = getCookie('user');
 
@@ -63,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setCookie('token', storedToken, 7);
         } catch (error) {
           console.error('Error parsing user data from localStorage:', error);
-          // Clear invalid localStorage data
           localStorage.removeItem('token');
         }
       }
