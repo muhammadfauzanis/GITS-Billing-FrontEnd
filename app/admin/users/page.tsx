@@ -29,7 +29,25 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
-import { getUsers, deleteUser } from '@/lib/api';
+import {
+  getUsers,
+  deleteUser,
+  getClients,
+  updateUserClientId,
+} from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface User {
   id: number;
@@ -40,87 +58,75 @@ interface User {
   createdAt: string;
 }
 
-interface UsersResponse {
-  users: User[];
+interface Client {
+  id: number;
+  name: string;
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
       setError(null);
-
-      const response: UsersResponse = await getUsers();
-      setUsers(response.users || []);
+      const res = await getUsers();
+      setUsers(res.users || []);
     } catch (error: any) {
-      console.error('Error fetching users:', error);
       setError(error.message || 'Gagal memuat data pengguna');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchClients = async () => {
+    const res = await getClients();
+    setClients(res.clients || []);
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchClients();
   }, []);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.status.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter((user) =>
+    [user.email, user.role, user.client, user.status].some((field) =>
+      field.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   const handleDeleteUser = async (userId: number) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
-
-    if (confirm(`Apakah Anda yakin ingin menghapus user "${user.email}"?`)) {
-      try {
-        setIsDeleting(userId);
-        await deleteUser(userId);
-
-        setUsers(users.filter((user) => user.id !== userId));
-
-        console.log('User berhasil dihapus');
-      } catch (error: any) {
-        console.error('Error deleting user:', error);
-        alert(`Gagal menghapus user: ${error.message}`);
-      } finally {
-        setIsDeleting(null);
-      }
+    if (!confirm('Hapus pengguna ini?')) return;
+    try {
+      setIsDeleting(userId);
+      await deleteUser(userId);
+      setUsers(users.filter((u) => u.id !== userId));
+    } catch (error: any) {
+      alert(`Gagal menghapus user: ${error.message}`);
+    } finally {
+      setIsDeleting(null);
     }
   };
 
-  const handleRefresh = () => {
-    fetchUsers();
+  const handleEditClick = (id: number) => {
+    setSelectedUserId(id);
+    setIsEditOpen(true);
   };
 
-  const getStatusVariant = (status: string) => {
-    return status.toLowerCase() === 'aktif' ? 'default' : 'secondary';
+  const handleSaveEdit = async () => {
+    if (!selectedUserId || !selectedClientId) return;
+    await updateUserClientId(selectedUserId, Number(selectedClientId));
+    await fetchUsers();
+    setIsEditOpen(false);
   };
-
-  const getRoleVariant = (role: string) => {
-    return role.toLowerCase() === 'admin' ? 'destructive' : 'secondary';
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">Memuat data pengguna...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -132,20 +138,12 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-            />
-            Refresh
+          <Button variant="outline" onClick={fetchUsers}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
           <Button asChild>
             <Link href="/admin/create-user">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Buat User Baru
+              <UserPlus className="mr-2 h-4 w-4" /> Buat User Baru
             </Link>
           </Button>
         </div>
@@ -154,17 +152,7 @@ export default function UsersPage() {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              className="ml-2"
-            >
-              Coba Lagi
-            </Button>
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -172,27 +160,17 @@ export default function UsersPage() {
         <CardHeader>
           <CardTitle>Daftar Pengguna</CardTitle>
           <CardDescription>
-            Total {users.length} pengguna terdaftar dalam sistem
+            Total {users.length} pengguna terdaftar
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                type="search"
-                placeholder="Cari pengguna..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {searchTerm && (
-              <p className="text-sm text-gray-500">
-                Menampilkan {filteredUsers.length} dari {users.length} pengguna
-              </p>
-            )}
-          </div>
+          <Input
+            type="search"
+            placeholder="Cari pengguna..."
+            className="mb-4"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
 
           <div className="rounded-md border">
             <Table>
@@ -207,79 +185,81 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleVariant(user.role)}>
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {user.client !== '-' ? (
-                          <span className="text-sm">{user.client}</span>
-                        ) : (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(user.status)}>
-                          {user.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{user.createdAt}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" disabled>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                            disabled={isDeleting === user.id}
-                          >
-                            {isDeleting === user.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      {searchTerm
-                        ? 'Tidak ada pengguna yang sesuai dengan pencarian.'
-                        : 'Belum ada pengguna terdaftar.'}
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          user.role === 'admin' ? 'destructive' : 'secondary'
+                        }
+                      >
+                        {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{user.client || '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          user.status === 'Aktif' ? 'default' : 'secondary'
+                        }
+                      >
+                        {user.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{user.createdAt}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditClick(user.id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          {isDeleting === user.id ? (
+                            <div className="animate-spin h-4 w-4 border-b-2 border-gray-900 rounded-full"></div>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>
-
-          {!error && users.length > 0 && (
-            <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-              <p>
-                Menampilkan {filteredUsers.length} dari {users.length} pengguna
-              </p>
-              <p>
-                Admin:{' '}
-                {users.filter((u) => u.role.toLowerCase() === 'admin').length} |
-                Client:{' '}
-                {users.filter((u) => u.role.toLowerCase() === 'client').length}
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Client ID</DialogTitle>
+          </DialogHeader>
+          <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih client" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id.toString()}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex justify-end mt-4">
+            <Button onClick={handleSaveEdit}>Simpan</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

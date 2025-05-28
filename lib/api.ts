@@ -38,6 +38,7 @@ export const registerUser = async (userData: {
     return response.data;
   } catch (error: any) {
     console.error('Registration error:', error);
+    // Handle axios error response
     if (error.response?.data) {
       throw new Error(
         error.response.data.detail ||
@@ -86,6 +87,13 @@ export const deleteUser = async (userId: number) => {
     }
     throw new Error(error.message || 'Failed to delete user');
   }
+};
+
+export const updateUserClientId = async (userId: number, clientId: number) => {
+  const response = await axiosInstance.patch(`/admin/users/${userId}`, {
+    clientId,
+  });
+  return response.data;
 };
 
 // Billing API

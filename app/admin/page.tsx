@@ -27,7 +27,6 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // PLACEHOLDER: Simulate loading stats
     const loadStats = async () => {
       setIsLoading(true);
 

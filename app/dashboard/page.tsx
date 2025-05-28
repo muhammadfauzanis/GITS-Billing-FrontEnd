@@ -20,10 +20,12 @@ import {
   getBillingSummary,
   getClientName,
   getClientProjects,
+  getClients,
   getMonthlyUsage,
   getOverallServiceBreakdown,
   getProjectBreakdown,
 } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
@@ -34,6 +36,9 @@ export default function DashboardPage() {
   const [clientName, setClientName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const { user } = useAuth(); // pastikan pakai context auth
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -76,6 +81,14 @@ export default function DashboardPage() {
 
     fetchDashboardData();
   }, [currentMonth, currentYear]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      getClients()
+        .then((res) => setClients(res.clients))
+        .catch((err) => console.error('Gagal load clients', err));
+    }
+  }, []);
 
   if (isLoading) {
     return (

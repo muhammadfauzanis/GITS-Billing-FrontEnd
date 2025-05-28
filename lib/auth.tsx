@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type User = {
-  id: string;
+  id: number;
   email: string;
   clientId: string;
   isPasswordSet: boolean;
