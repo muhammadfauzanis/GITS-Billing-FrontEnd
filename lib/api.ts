@@ -95,6 +95,25 @@ export const registerUser = async (userData: {
   }
 };
 
+export const changePassword = async (data: {
+  new_password: string;
+  confirm_new_password: string;
+}) => {
+  try {
+    const response = await axiosInstance.patch('/auth/change-password', data);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.detail ||
+          error.response.data.message ||
+          'Failed to change password'
+      );
+    }
+    throw new Error(error.message || 'Failed to change password');
+  }
+};
+
 export const getClients = async () => {
   try {
     const response = await axiosInstance.get('/admin/clients');

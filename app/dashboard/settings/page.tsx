@@ -1,3 +1,4 @@
+// app/dashboard/settings/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,12 +14,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { getBudget, getClientName, setBudget } from '@/lib/api';
+import { getBudget, getClientName, setBudget, changePassword } from '@/lib/api'; // Hapus setPassword, tambahkan changePassword
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const [clientName, setClientName] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingBudget, setIsSavingBudget] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetThreshold, setBudgetThreshold] = useState('');
@@ -26,9 +29,18 @@ export default function SettingsPage() {
     budgetValue: '',
     budgetThreshold: '',
   });
-  const [hasChanges, setHasChanges] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [hasBudgetChanges, setHasBudgetChanges] = useState(false);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Hapus state currentPassword
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -62,7 +74,7 @@ export default function SettingsPage() {
 
   const handleSaveChanges = async () => {
     try {
-      setIsSaving(true);
+      setIsSavingBudget(true);
 
       const payload: { budget_value?: number; budget_threshold?: number } = {};
       if (budgetAmount !== initialBudget.budgetValue) {
@@ -73,7 +85,7 @@ export default function SettingsPage() {
       }
 
       if (Object.keys(payload).length === 0) {
-        console.log('Tidak ada perubahan. Skip update ke server.');
+        console.log('Tidak ada perubahan budget. Skip update ke server.');
         return;
       }
 
@@ -84,13 +96,72 @@ export default function SettingsPage() {
         budgetThreshold: budgetThreshold,
       });
 
-      setHasChanges(false);
-      setIsEditing(false);
+      setHasBudgetChanges(false);
+      setIsEditingBudget(false);
     } catch (err: any) {
       console.error('Error saving budget:', err);
-      setError(err.message || 'Gagal menyimpan pengaturan');
+      setError(err.message || 'Gagal menyimpan pengaturan budget');
     } finally {
-      setIsSaving(false);
+      setIsSavingBudget(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsChangingPassword(true);
+    setPasswordMessage(null);
+
+    // Validasi input
+    if (!newPassword || !confirmNewPassword) {
+      setPasswordMessage({
+        type: 'error',
+        text: 'Semua field password harus diisi.',
+      });
+      setIsChangingPassword(false);
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMessage({
+        type: 'error',
+        text: 'Konfirmasi password baru tidak cocok.',
+      });
+      setIsChangingPassword(false);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordMessage({
+        type: 'error',
+        text: 'Password baru minimal 6 karakter.',
+      });
+      setIsChangingPassword(false);
+      return;
+    }
+
+    try {
+      // Panggil fungsi changePassword yang baru tanpa current_password
+      await changePassword({
+        new_password: newPassword,
+        confirm_new_password: confirmNewPassword,
+      });
+
+      setPasswordMessage({
+        type: 'success',
+        text: 'Password berhasil diganti!',
+      });
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      console.error('Error changing password:', err);
+      setPasswordMessage({
+        type: 'error',
+        text:
+          err.message ||
+          'Gagal mengganti password. Pastikan password baru memenuhi kriteria.',
+      });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -128,6 +199,68 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ganti Password</CardTitle>
+              <CardDescription>Ubah password akun Anda.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                {passwordMessage && (
+                  <Alert
+                    variant={
+                      passwordMessage.type === 'error'
+                        ? 'destructive'
+                        : 'default'
+                    }
+                  >
+                    {passwordMessage.type === 'error' ? (
+                      <AlertCircle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    <AlertTitle>
+                      {passwordMessage.type === 'error' ? 'Error' : 'Berhasil'}
+                    </AlertTitle>
+                    <AlertDescription>{passwordMessage.text}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Password Baru</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Minimal 6 karakter"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    disabled={isChangingPassword}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-new-password">
+                    Konfirmasi Password Baru
+                  </Label>
+                  <Input
+                    id="confirm-new-password"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    disabled={isChangingPassword}
+                  />
+                </div>
+                <Button type="submit" disabled={isChangingPassword}>
+                  {isChangingPassword
+                    ? 'Mengganti Password...'
+                    : 'Ganti Password'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-6 pt-4">
@@ -147,11 +280,11 @@ export default function SettingsPage() {
                   <Input
                     id="budget-budgetValue"
                     value={budgetAmount}
-                    disabled={!isEditing}
+                    disabled={!isEditingBudget}
                     onChange={(e) => {
                       const value = e.target.value;
                       setBudgetAmount(value);
-                      setHasChanges(
+                      setHasBudgetChanges(
                         value !== initialBudget.budgetValue ||
                           budgetThreshold !== initialBudget.budgetThreshold
                       );
@@ -165,11 +298,11 @@ export default function SettingsPage() {
                   <Input
                     id="budget-budgetThreshold"
                     value={budgetThreshold}
-                    disabled={!isEditing}
+                    disabled={!isEditingBudget}
                     onChange={(e) => {
                       const value = e.target.value;
                       setBudgetThreshold(value);
-                      setHasChanges(
+                      setHasBudgetChanges(
                         value !== initialBudget.budgetThreshold ||
                           budgetAmount !== initialBudget.budgetValue
                       );
@@ -179,18 +312,20 @@ export default function SettingsPage() {
               </div>
               <Button
                 onClick={
-                  isEditing
-                    ? hasChanges
+                  isEditingBudget
+                    ? hasBudgetChanges
                       ? handleSaveChanges
                       : undefined
-                    : () => setIsEditing(true)
+                    : () => setIsEditingBudget(true)
                 }
-                disabled={isSaving || (isEditing && !hasChanges)}
+                disabled={
+                  isSavingBudget || (isEditingBudget && !hasBudgetChanges)
+                }
               >
-                {isSaving
+                {isSavingBudget
                   ? 'Menyimpan...'
-                  : isEditing
-                  ? hasChanges
+                  : isEditingBudget
+                  ? hasBudgetChanges
                     ? 'Simpan Perubahan'
                     : 'Simpan Perubahan'
                   : 'Edit Budget'}
