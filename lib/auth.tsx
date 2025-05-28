@@ -10,6 +10,7 @@ type User = {
   email: string;
   clientId: string;
   isPasswordSet: boolean;
+  role: string;
 };
 
 type AuthContextType = {
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: User & { role: string }) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
 
@@ -79,9 +80,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
 
     const urlParams = new URLSearchParams(window.location.search);
-    const redirectTo = urlParams.get('redirect') || '/dashboard';
+    const redirectTo = urlParams.get('redirect');
 
-    router.push(redirectTo);
+    // Redirect otomatis berdasarkan role jika tidak ada ?redirect
+    if (redirectTo) {
+      router.push(redirectTo);
+    } else if (newUser.role === 'admin') {
+      router.push('/admin');
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   const logout = () => {

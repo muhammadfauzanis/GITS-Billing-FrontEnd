@@ -26,6 +26,68 @@ export const logoutUser = async () => {
   return response.data;
 };
 
+// Admin API
+export const registerUser = async (userData: {
+  email: string;
+  password: string;
+  role: string;
+  clientId?: string;
+}) => {
+  try {
+    const response = await axiosInstance.post('/auth/register', userData);
+    return response.data;
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.detail ||
+          error.response.data.message ||
+          'Registration failed'
+      );
+    }
+    throw new Error(error.message || 'Registration failed');
+  }
+};
+
+export const getClients = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/clients');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get clients error:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to fetch clients');
+    }
+    throw new Error(error.message || 'Failed to fetch clients');
+  }
+};
+
+export const getUsers = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/users');
+    return response.data;
+  } catch (error: any) {
+    console.error('Get users error:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to fetch users');
+    }
+    throw new Error(error.message || 'Failed to fetch users');
+  }
+};
+
+export const deleteUser = async (userId: number) => {
+  try {
+    const response = await axiosInstance.delete(`/admin/users/${userId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Delete user error:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to delete user');
+    }
+    throw new Error(error.message || 'Failed to delete user');
+  }
+};
+
 // Billing API
 export const getClientProjects = async () => {
   const response = await axiosInstance.get('/billing/projects');
