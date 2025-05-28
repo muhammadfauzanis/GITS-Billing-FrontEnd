@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = (newToken: string, newUser: User & { role: string }) => {
+  const login = (newToken: string, newUser: User) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
 
@@ -82,8 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const urlParams = new URLSearchParams(window.location.search);
     const redirectTo = urlParams.get('redirect');
 
-    // Redirect otomatis berdasarkan role jika tidak ada ?redirect
-    if (redirectTo) {
+    if (newUser.isPasswordSet === false) {
+      router.push(`/set-password?email=${newUser.email}`);
+    } else if (redirectTo) {
       router.push(redirectTo);
     } else if (newUser.role === 'admin') {
       router.push('/admin');
