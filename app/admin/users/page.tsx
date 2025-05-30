@@ -48,6 +48,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'; // Import AlertDialog components
+import { useToast } from '@/hooks/use-toast'; // Import useToast hook
 
 interface User {
   id: number;
@@ -73,6 +85,7 @@ export default function UsersPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const { toast } = useToast(); // Initialize useToast hook
 
   const fetchUsers = async () => {
     try {
@@ -104,13 +117,22 @@ export default function UsersPage() {
   );
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Hapus pengguna ini?')) return;
+    setIsDeleting(userId);
     try {
-      setIsDeleting(userId);
       await deleteUser(userId);
       setUsers(users.filter((u) => u.id !== userId));
+      toast({
+        // Tampilkan toast sukses
+        title: 'Berhasil!',
+        description: 'Pengguna berhasil dihapus.',
+      });
     } catch (error: any) {
-      alert(`Gagal menghapus user: ${error.message}`);
+      toast({
+        // Tampilkan toast error
+        title: 'Gagal!',
+        description: error.message || 'Gagal menghapus pengguna.',
+        variant: 'destructive',
+      });
     } finally {
       setIsDeleting(null);
     }
@@ -122,10 +144,29 @@ export default function UsersPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!selectedUserId || !selectedClientId) return;
-    await updateUserClientId(selectedUserId, Number(selectedClientId));
-    await fetchUsers();
-    setIsEditOpen(false);
+    if (!selectedUserId || !selectedClientId) {
+      toast({
+        title: 'Gagal!',
+        description: 'Client ID belum dipilih.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      await updateUserClientId(selectedUserId, Number(selectedClientId));
+      await fetchUsers();
+      setIsEditOpen(false);
+      toast({
+        title: 'Berhasil!',
+        description: 'Client ID pengguna berhasil diperbarui.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Gagal!',
+        description: error.message || 'Gagal memperbarui Client ID pengguna.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -217,17 +258,43 @@ export default function UsersPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteUser(user.id)}
-                        >
-                          {isDeleting === user.id ? (
-                            <div className="animate-spin h-4 w-4 border-b-2 border-gray-900 rounded-full"></div>
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <AlertDialog>
+                          {' '}
+                          {/* AlertDialog Trigger */}
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isDeleting === user.id}
+                            >
+                              {isDeleting === user.id ? (
+                                <div className="animate-spin h-4 w-4 border-b-2 border-gray-900 rounded-full"></div>
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Konfirmasi Hapus Pengguna
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Apakah Anda yakin ingin menghapus pengguna "
+                                {user.email}"? Tindakan ini tidak dapat
+                                dibatalkan.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                Hapus
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>

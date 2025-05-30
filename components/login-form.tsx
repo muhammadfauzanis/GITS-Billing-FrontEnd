@@ -35,7 +35,7 @@ export function LoginForm() {
       const response = await loginUser(email, password);
       login(response.token, response.user);
     } catch (error: any) {
-      setError(error.message || 'Login gagal. Silakan coba lagi.');
+      setError('Login gagal, email atau password salah!. Silakan coba lagi.');
       setIsLoading(false);
     }
   };
