@@ -1,35 +1,35 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { BarChart3, FileText, Home, Settings } from "lucide-react"
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { BarChart3, FileText, Home, Settings } from 'lucide-react';
 
 const sidebarItems = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: 'Dashboard',
+    href: '/dashboard',
     icon: Home,
   },
   {
-    title: "Penggunaan",
-    href: "/dashboard/usage",
+    title: 'Penggunaan',
+    href: '/dashboard/usage',
     icon: BarChart3,
   },
+  // {
+  //   title: "Tagihan",
+  //   href: "/dashboard/invoices",
+  //   icon: FileText,
+  // },
   {
-    title: "Tagihan",
-    href: "/dashboard/invoices",
-    icon: FileText,
-  },
-  {
-    title: "Pengaturan",
-    href: "/dashboard/settings",
+    title: 'Pengaturan',
+    href: '/dashboard/settings',
     icon: Settings,
   },
-]
+];
 
 export function DashboardSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <aside className="hidden w-64 flex-col border-r bg-white md:flex">
@@ -40,8 +40,10 @@ export function DashboardSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium",
-                pathname === item.href ? "bg-black text-white" : "text-gray-600 hover:bg-gray-100",
+                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium',
+                pathname === item.href
+                  ? 'bg-black text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -51,5 +53,5 @@ export function DashboardSidebar() {
         </nav>
       </div>
     </aside>
-  )
+  );
 }
