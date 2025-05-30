@@ -186,7 +186,7 @@ export default function UsagePage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
-          <div className="flex justify-between">
+          {/* <div className="flex justify-between">
             <div className="flex gap-2">
               <Select value={groupBy} onValueChange={handleGroupByChange}>
                 <SelectTrigger className="w-[180px]">
@@ -208,9 +208,9 @@ export default function UsagePage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </div> */}
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Tren Penggunaan</CardTitle>
               <CardDescription>
@@ -227,7 +227,7 @@ export default function UsagePage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card>
             <CardHeader>

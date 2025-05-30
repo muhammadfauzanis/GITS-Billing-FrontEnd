@@ -1,12 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  AlertTriangle,
-} from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
 
 interface BillingOverviewProps {
   data: {
@@ -38,12 +33,11 @@ export function BillingOverview({ data }: BillingOverviewProps) {
   const isIncrease = Number.parseFloat(data.currentMonth.percentageChange) > 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {/* Current Month */}
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
-          <DollarSign className="h-4 w-4 text-gray-400" />
         </div>
         <div className="mt-2">
           <p className="text-xl xl:text-2xl font-bold">
@@ -71,7 +65,6 @@ export function BillingOverview({ data }: BillingOverviewProps) {
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-gray-500">Bulan Lalu</p>
-          <DollarSign className="h-4 w-4 text-gray-400" />
         </div>
         <div className="mt-2">
           <p className="text-xl xl:text-2xl font-bold">
@@ -81,10 +74,9 @@ export function BillingOverview({ data }: BillingOverviewProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
+      {/* <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-gray-500">Proyeksi</p>
-          <DollarSign className="h-4 w-4 text-gray-400" />
         </div>
         <div className="mt-2">
           <p className="text-xl xl:text-2xl font-bold">
@@ -92,7 +84,7 @@ export function BillingOverview({ data }: BillingOverviewProps) {
           </p>
           <p className="mt-1 text-xs text-gray-500">{data.projection.label}</p>
         </div>
-      </div>
+      </div> */}
 
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
