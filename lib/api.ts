@@ -43,6 +43,25 @@ export const registerUser = async (userData: {
   }
 };
 
+export const updateUserPasswordStatus = async (userId: string) => {
+  try {
+    // Kirim userId di dalam body request
+    const response = await axiosInstance.patch('/auth/update-password-status', {
+      userId,
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.detail ||
+          error.response.data.message ||
+          'Failed to update password status'
+      );
+    }
+    throw new Error(error.message || 'Failed to update password status');
+  }
+};
+
 export const deleteUser = async (userId: number) => {
   try {
     const response = await axiosInstance.delete(`/admin/users/${userId}`);

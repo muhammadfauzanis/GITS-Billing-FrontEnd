@@ -17,11 +17,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { updateUserPasswordStatus } from '@/lib/api'; // <-- Import fungsi baru
 
 export function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPasswordValue] = useState('');
   const [repassword, setRepassword] = useState('');
@@ -38,11 +39,7 @@ export function SetPasswordForm() {
     } else if (user?.email) {
       setEmail(user.email);
     }
-
-    if (user && user.isPasswordSet) {
-      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
-    }
-  }, [searchParams, user, router]);
+  }, [searchParams, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,30 +59,23 @@ export function SetPasswordForm() {
     }
 
     try {
+      // 1. Update password di Supabase Auth
       const { error } = await supabase.auth.updateUser({ password: password });
-
       if (error) throw error;
 
-      const { error: updateProfileError } = await supabase
-        .from('users') // Your public.users table
-        .update({ is_password_set: true })
-        .eq('email', user?.email || email); // Use email to link to public.users table
-
-      if (updateProfileError) {
-        console.error(
-          'Error updating profile is_password_set:',
-          updateProfileError
-        );
+      if (!user) {
+        throw new Error('User session not found, cannot update status.');
       }
+
+      await updateUserPasswordStatus(user.id);
 
       setMessage({
         type: 'success',
-        text: 'Password berhasil disetel! Anda akan diarahkan ke dashboard.',
+        text: 'Password berhasil disetel! Anda akan diarahkan secara otomatis.',
       });
 
-      setTimeout(() => {
-        router.push(user?.role === 'admin' ? '/admin' : '/dashboard');
-      }, 2000);
+      // 3. Panggil router.refresh() untuk memicu middleware
+      router.refresh();
     } catch (error: any) {
       console.error('Error setting password:', error);
       setMessage({
@@ -157,6 +147,7 @@ export function SetPasswordForm() {
   );
 }
 
+// Komponen default tidak perlu diubah
 export default function SetPasswordPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">

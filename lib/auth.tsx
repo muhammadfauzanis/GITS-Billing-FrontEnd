@@ -1,3 +1,5 @@
+// File: lib/auth.tsx
+
 'use client';
 
 import type React from 'react';
@@ -7,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 type AppUser = {
-  id: string;
+  id: string; // Ini adalah supabase_auth_id
   email: string;
   clientId: string | null;
   role: string | null;
@@ -44,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: profile } = await supabase
           .from('users')
           .select('id, client_id, role, is_password_set')
-          .eq('id', currentSession.user.id) // Use ID for reliability
+          .eq('supabase_auth_id', currentSession.user.id) // <-- PERUBAHAN: Gunakan 'supabase_auth_id'
           .single();
 
         if (profile) {
