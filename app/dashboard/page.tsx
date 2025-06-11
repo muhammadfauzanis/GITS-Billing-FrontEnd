@@ -76,9 +76,8 @@ export default function DashboardPage() {
     (newClientId: string) => {
       setSelectedClientId(newClientId);
       setCurrentClientIdForData(newClientId);
-      const selectedClientDetail = clients.find(
-        (c) => c.id.toString() === newClientId
-      );
+      const selectedClientDetail = clients.find((c) => c.id === newClientId);
+
       if (selectedClientDetail) {
         setClientName(selectedClientDetail.name);
       } else {
@@ -241,18 +240,8 @@ export default function DashboardPage() {
             Dashboard Billing
           </h1>
           {clientName && (
-            <h3
-              className={`text-lg font-semibold ${
-                user?.role === 'admin' && currentClientIdForData
-                  ? 'text-blue-600'
-                  : ''
-              }`}
-            >
-              {user?.role === 'admin' && currentClientIdForData
-                ? `Menampilkan data untuk: ${clientName}`
-                : user?.role !== 'admin'
-                ? clientName
-                : ''}
+            <h3 className={`text-lg font-semibold`}>
+              {user?.role === 'admin' ? '' : clientName}
             </h3>
           )}
           <p className="text-muted-foreground">

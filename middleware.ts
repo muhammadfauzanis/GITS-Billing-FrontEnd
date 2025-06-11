@@ -1,48 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-const encoder = new TextEncoder();
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-async function verifyToken(token: string) {
-  try {
-    const secret = encoder.encode(JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret, {
-      algorithms: ['HS256'],
-    });
-    return payload;
-  } catch (err) {
-    console.error('Invalid token:', err);
-    return null;
-  }
-}
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  const { pathname } = request.nextUrl;
-
-  const isProtected = pathname === '/' || pathname.startsWith('/dashboard');
-
-  if (isProtected && !token) {
-    return NextResponse.redirect(new URL('/', request.url));
+  if (sessionError) {
+    console.error('Middleware Supabase session error:', sessionError);
   }
 
-  if (token) {
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.redirect(new URL('/', request.url));
+  const { pathname } = req.nextUrl;
+  const publicPaths = ['/', '/set-password'];
+
+  if (!session && !publicPaths.includes(pathname)) {
+    const redirectUrl = new URL('/', req.url);
+    redirectUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (session) {
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('role, is_password_set')
+      .eq('email', session.user.email)
+      .single();
+
+    if (profileError) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL('/', req.url));
     }
 
-    const role = (decoded as any).role;
+    if (pathname !== '/set-password' && profile && !profile.is_password_set) {
+      return NextResponse.redirect(
+        new URL(`/set-password?email=${session.user.email}`, req.url)
+      );
+    }
 
-    if (pathname.startsWith('/admin') && role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+    if (publicPaths.includes(pathname)) {
+      return NextResponse.redirect(
+        new URL(profile?.role === 'admin' ? '/admin' : '/dashboard', req.url)
+      );
+    }
+
+    if (profile?.role === 'admin' && !pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/admin', req.url));
+    }
+
+    if (profile?.role !== 'admin' && pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
   }
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/', '/set-password'],
 };

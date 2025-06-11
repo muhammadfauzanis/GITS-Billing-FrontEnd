@@ -1,8 +1,7 @@
 'use client';
 
 import type React from 'react';
-
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +15,6 @@ import {
 } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { loginUser } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 export function LoginForm() {
@@ -32,10 +30,12 @@ export function LoginForm() {
     setError('');
 
     try {
-      const response = await loginUser(email, password);
-      login(response.token, response.user);
-    } catch (error: any) {
-      setError('Login gagal, email atau password salah!. Silakan coba lagi.');
+      await login(email, password);
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(
+        err.message || 'Login failed, please check your email and password.'
+      );
       setIsLoading(false);
     }
   };
@@ -65,6 +65,7 @@ export function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -75,6 +76,7 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>

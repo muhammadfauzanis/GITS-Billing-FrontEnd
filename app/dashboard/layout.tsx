@@ -1,38 +1,46 @@
-"use client"
+// app/dashboard/layout.tsx
+'use client';
 
-import type React from "react"
-import { useRouter } from "next/navigation"
-import { DashboardSidebar } from "@/components/dashboard-sidebar"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { useAuth } from "@/lib/auth"
+import type React from 'react';
+import { useRouter } from 'next/navigation';
+import { DashboardSidebar } from '@/components/dashboard-sidebar';
+import { DashboardHeader } from '@/components/dashboard-header';
+import { useAuth } from '@/lib/auth';
+import { useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  // AUTHENTICATION PROTECTION - Uncomment to enable route protection
-  /*
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/")
+      router.push('/');
+    } else if (
+      !isLoading &&
+      user &&
+      user.role === 'admin' &&
+      !window.location.pathname.startsWith('/admin')
+    ) {
+      // If an admin tries to access the regular dashboard, redirect to admin panel
+      router.push('/admin');
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, router]);
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
   }
 
   if (!user) {
-    return null
+    return null;
   }
-  */
-
-  // TEMPORARY: Allow access without authentication
-  const tempUser = user || { email: "demo@example.com", clientId: "demo-client" }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -42,5 +50,5 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>
-  )
+  );
 }

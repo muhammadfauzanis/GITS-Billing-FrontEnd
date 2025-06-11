@@ -1,110 +1,107 @@
 'use client';
 
 import type React from 'react';
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
-type User = {
-  id: number;
+type AppUser = {
+  id: string;
   email: string;
-  clientId: string;
+  clientId: string | null;
+  role: string | null;
   isPasswordSet: boolean;
-  role: string;
 };
 
 type AuthContextType = {
-  user: User | null;
-  token: string | null;
+  user: AppUser | null;
+  session: Session | null;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  token: null,
+  session: null,
   isLoading: true,
-  login: () => {},
-  logout: () => {},
+  login: async () => {},
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+    const handleAuthStateChange = async (currentSession: Session | null) => {
+      setSession(currentSession);
 
-      const cookieToken = getCookie('token');
-      const cookieUser = getCookie('user');
+      if (currentSession) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('id, client_id, role, is_password_set')
+          .eq('id', currentSession.user.id) // Use ID for reliability
+          .single();
 
-      if (cookieToken && cookieUser) {
-        try {
-          setToken(cookieToken);
-          setUser(JSON.parse(cookieUser));
-        } catch (error) {
-          console.error('Error parsing user data from cookie:', error);
-          // Clear invalid cookie data
-          deleteCookie('token');
-          deleteCookie('user');
+        if (profile) {
+          const appUser: AppUser = {
+            id: currentSession.user.id,
+            email: currentSession.user.email || '',
+            clientId: profile.client_id ? String(profile.client_id) : null,
+            role: profile.role,
+            isPasswordSet: profile.is_password_set || false,
+          };
+          setUser(appUser);
+        } else {
+          setUser(null);
         }
-      } else if (storedToken && storedUser) {
-        try {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-          setCookie('token', storedToken, 7);
-        } catch (error) {
-          console.error('Error parsing user data from localStorage:', error);
-          localStorage.removeItem('token');
-        }
+      } else {
+        setUser(null);
       }
-
       setIsLoading(false);
     };
 
-    checkAuth();
-  }, []);
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      handleAuthStateChange(initialSession);
+    });
 
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
+    // Listen for changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, currentSession) => {
+        handleAuthStateChange(currentSession);
+        // Refresh the page to ensure server components update with the new auth state.
+        // The middleware will handle any necessary redirects.
+        router.refresh();
+      }
+    );
 
-    setCookie('token', newToken, 14);
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [router]);
 
-    setToken(newToken);
-    setUser(newUser);
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const redirectTo = urlParams.get('redirect');
-
-    if (newUser.isPasswordSet === false) {
-      router.push(`/set-password?email=${newUser.email}`);
-    } else if (redirectTo) {
-      router.push(redirectTo);
-    } else if (newUser.role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/dashboard');
-    }
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-
-    deleteCookie('token');
-
-    setToken(null);
+  const logout = async () => {
+    await supabase.auth.signOut();
     router.push('/');
+    setUser(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -116,25 +113,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
-
-function setCookie(name: string, value: string, days: number) {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-}
-
-function getCookie(name: string): string | null {
-  const nameEQ = name + '=';
-  const ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
-}
-
-function deleteCookie(name: string) {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
 }

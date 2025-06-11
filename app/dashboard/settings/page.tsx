@@ -14,12 +14,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { getBudget, getClientName, setBudget, changePassword } from '@/lib/api'; // Hapus setPassword, tambahkan changePassword
+import { getBudget, getClientName, setBudget } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [clientName, setClientName] = useState('');
   const [isSavingBudget, setIsSavingBudget] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +34,6 @@ export default function SettingsPage() {
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Hapus state currentPassword
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   } | null>(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchSettingsData = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -62,15 +62,17 @@ export default function SettingsPage() {
           budgetThreshold: String(budgetResponse.budgetThreshold),
         });
       } catch (err: any) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message || 'Gagal memuat data dashboard');
+        console.error('Error fetching settings data:', err);
+        setError(err.message || 'Gagal memuat data pengaturan');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDashboardData();
-  }, [user?.id]);
+    if (user) {
+      fetchSettingsData();
+    }
+  }, [user]);
 
   const handleSaveChanges = async () => {
     try {
@@ -86,6 +88,8 @@ export default function SettingsPage() {
 
       if (Object.keys(payload).length === 0) {
         console.log('Tidak ada perubahan budget. Skip update ke server.');
+        setHasBudgetChanges(false);
+        setIsEditingBudget(false);
         return;
       }
 
@@ -111,7 +115,6 @@ export default function SettingsPage() {
     setIsChangingPassword(true);
     setPasswordMessage(null);
 
-    // Validasi input
     if (!newPassword || !confirmNewPassword) {
       setPasswordMessage({
         type: 'error',
@@ -140,11 +143,23 @@ export default function SettingsPage() {
     }
 
     try {
-      // Panggil fungsi changePassword yang baru tanpa current_password
-      await changePassword({
-        new_password: newPassword,
-        confirm_new_password: confirmNewPassword,
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
       });
+
+      if (error) throw error;
+
+      const { error: updateProfileError } = await supabase
+        .from('users') // Your public.users table
+        .update({ is_password_set: true })
+        .eq('email', user?.email || session?.user.email); // Link to public.users table by email
+
+      if (updateProfileError) {
+        console.error(
+          'Error updating profile is_password_set after password change:',
+          updateProfileError
+        );
+      }
 
       setPasswordMessage({
         type: 'success',
@@ -164,6 +179,14 @@ export default function SettingsPage() {
       setIsChangingPassword(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        Loading settings...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

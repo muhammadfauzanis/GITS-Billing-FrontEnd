@@ -78,11 +78,13 @@ export default function CreateUserPage() {
           clientId: formData.clientId,
         }),
       };
-      
 
       await registerUser(userData);
 
-      setMessage({ type: 'success', text: 'Akun berhasil dibuat!' });
+      setMessage({
+        type: 'success',
+        text: 'Akun berhasil dibuat! Silakan cek email user untuk mengatur password.',
+      });
       setFormData({ email: '', password: '', role: '', clientId: '' });
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -155,16 +157,15 @@ export default function CreateUserPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="password">Password</Label>
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Minimal 6 karakter"
+                    placeholder="password"
                     value={formData.password}
                     onChange={(e) =>
                       handleInputChange('password', e.target.value)
                     }
-                    required
                     minLength={6}
                     disabled={isLoading}
                   />
@@ -226,7 +227,13 @@ export default function CreateUserPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isLoading || isLoadingClients}
+                  disabled={
+                    isLoading ||
+                    isLoadingClients ||
+                    !formData.email ||
+                    !formData.role ||
+                    (formData.role === 'client' && !formData.clientId)
+                  }
                 >
                   {isLoading ? 'Membuat Akun...' : 'Buat Akun'}
                 </Button>
@@ -248,7 +255,10 @@ export default function CreateUserPage() {
               • <strong>Client:</strong> Hanya dapat mengakses dashboard billing
               untuk client yang ditentukan
             </p>
-            <p>• Password minimal 6 karakter</p>
+            <p>
+              • Password minimal 6 karakter. Jika kosong, user akan diinvite via
+              email.
+            </p>
             <p>• Email harus unik dan belum terdaftar</p>
           </CardContent>
         </Card>

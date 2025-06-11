@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
-import { logoutUser } from '@/lib/api';
 
 export function DashboardHeader() {
   const { user, logout } = useAuth();
@@ -23,13 +22,10 @@ export function DashboardHeader() {
 
   const handleLogout = async () => {
     try {
-      await logoutUser();
-      logout();
-
-      window.location.href = '/';
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
-      logout();
+      window.location.href = '/';
     }
   };
 
@@ -69,15 +65,17 @@ export function DashboardHeader() {
             <DropdownMenuLabel>{displayUser?.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <Link href="/dashboard/profile" className="w-full">
-                Profil
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
               <Link href="/dashboard/settings" className="w-full">
                 Pengaturan
               </Link>
             </DropdownMenuItem>
+            {displayUser?.role === 'admin' && (
+              <DropdownMenuItem>
+                <Link href="/admin" className="w-full">
+                  Admin Panel
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               Keluar

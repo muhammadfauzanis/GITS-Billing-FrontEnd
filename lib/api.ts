@@ -1,78 +1,26 @@
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL!;
 
 const axiosInstance = axios.create({
   baseURL: BASE_API_URL,
-  withCredentials: true,
 });
 
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-export const loginUser = async (email: string, password: string) => {
-  try {
-    const response = await axiosInstance.post('/auth/login', {
-      email,
-      password,
-    });
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      throw new Error(
-        error.response.data.detail ||
-          error.response.data.message ||
-          'Login failed'
-      );
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
     }
-    throw new Error(error.message || 'Login failed');
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-};
-
-export const logoutUser = async () => {
-  try {
-    const response = await axiosInstance.post('/auth/logout');
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      throw new Error(
-        error.response.data.detail ||
-          error.response.data.message ||
-          'Logout failed'
-      );
-    }
-    throw new Error(error.message || 'Logout failed');
-  }
-};
-
-export const setPassword = async (
-  email: string,
-  password: string,
-  repassword: string
-) => {
-  try {
-    const response = await axiosInstance.post('/auth/set-password', {
-      email,
-      password,
-      repassword,
-    });
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      throw new Error(
-        error.response.data.detail ||
-          error.response.data.message ||
-          'Failed to set password'
-      );
-    }
-    throw new Error(error.message || 'Failed to set password');
-  }
-};
+);
 
 export const registerUser = async (userData: {
   email: string;
@@ -88,29 +36,10 @@ export const registerUser = async (userData: {
       throw new Error(
         error.response.data.detail ||
           error.response.data.message ||
-          'Registration failed'
+          'User registration failed'
       );
     }
-    throw new Error(error.message || 'Registration failed');
-  }
-};
-
-export const changePassword = async (data: {
-  new_password: string;
-  confirm_new_password: string;
-}) => {
-  try {
-    const response = await axiosInstance.patch('/auth/change-password', data);
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      throw new Error(
-        error.response.data.detail ||
-          error.response.data.message ||
-          'Failed to change password'
-      );
-    }
-    throw new Error(error.message || 'Failed to change password');
+    throw new Error(error.message || 'User registration failed');
   }
 };
 
@@ -159,15 +88,16 @@ export const updateUserClientId = async (userId: number, clientId: number) => {
 
 export const getClients = async () => {
   try {
-    // This endpoint is likely already for admins, no clientId needed in request
     const response = await axiosInstance.get('/admin/clients');
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to fetch clients');
+    }
+    throw new Error(error.message || 'Failed to fetch clients');
   }
 };
 
-// Example modification for getBillingSummary
 export const getBillingSummary = async (clientId?: string) => {
   try {
     const params = clientId ? { clientId } : {};
@@ -186,7 +116,7 @@ export const getBillingSummary = async (clientId?: string) => {
 export const getOverallServiceBreakdown = async (
   month: number,
   year: number,
-  clientId?: string // Added clientId
+  clientId?: string
 ) => {
   try {
     const params: any = { month, year };
@@ -198,25 +128,37 @@ export const getOverallServiceBreakdown = async (
     });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message ||
+          'Failed to fetch overall service breakdown'
+      );
+    }
+    throw new Error(
+      error.message || 'Failed to fetch overall service breakdown'
+    );
   }
 };
 
 export const getClientProjects = async (clientId?: string) => {
-  // clientId can be optional
   try {
     const params = clientId ? { clientId } : {};
     const response = await axiosInstance.get('/billing/projects', { params });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to fetch client projects'
+      );
+    }
+    throw new Error(error.message || 'Failed to fetch client projects');
   }
 };
 
 export const getAllProjectBreakdown = async (
   month: number,
   year: number,
-  clientId?: string // Added clientId
+  clientId?: string
 ) => {
   try {
     const params: any = { month, year };
@@ -228,14 +170,19 @@ export const getAllProjectBreakdown = async (
     });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to fetch all project breakdown'
+      );
+    }
+    throw new Error(error.message || 'Failed to fetch all project breakdown');
   }
 };
 
 export const getMonthlyUsage = async (
   groupBy: 'service' | 'project' = 'service',
   months = 6,
-  clientId?: string // Added clientId
+  clientId?: string
 ) => {
   try {
     const params: any = { groupBy, months };
@@ -245,27 +192,35 @@ export const getMonthlyUsage = async (
     const response = await axiosInstance.get('/billing/monthly', { params });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to fetch monthly usage'
+      );
+    }
+    throw new Error(error.message || 'Failed to fetch monthly usage');
   }
 };
 
 export const getClientName = async (clientId?: string) => {
-  // clientId can be optional
   try {
     const params = clientId ? { clientId } : {};
     const response = await axiosInstance.get('/user/client-name', { params });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to fetch client name'
+      );
+    }
+    throw new Error(error.message || 'Failed to fetch client name');
   }
 };
 
-// Ensure getProjectBreakdown also accepts clientId if admins need to drill down
 export const getProjectBreakdown = async (
   projectId: string,
   month: number,
   year: number,
-  clientId?: string // Added clientId
+  clientId?: string
 ) => {
   try {
     const params: any = { month, year };
@@ -278,11 +233,15 @@ export const getProjectBreakdown = async (
     );
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to fetch project breakdown'
+      );
+    }
+    throw new Error(error.message || 'Failed to fetch project breakdown');
   }
 };
 
-// getBudget and setBudget might also need clientId if admins can view/edit these per client
 export const getBudget = async (clientId?: string) => {
   try {
     const params: any = {};
@@ -292,7 +251,10 @@ export const getBudget = async (clientId?: string) => {
     const response = await axiosInstance.get('/billing/budget', { params });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to fetch budget');
+    }
+    throw new Error(error.message || 'Failed to fetch budget');
   }
 };
 
@@ -301,7 +263,7 @@ export const setBudget = async (
     budget_value?: number;
     budget_threshold?: number;
   },
-  clientId?: string // Added clientId
+  clientId?: string
 ) => {
   try {
     const params: any = {};
@@ -313,6 +275,9 @@ export const setBudget = async (
     });
     return response.data;
   } catch (error: any) {
-    // ... error handling
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to set budget');
+    }
+    throw new Error(error.message || 'Failed to set budget');
   }
 };

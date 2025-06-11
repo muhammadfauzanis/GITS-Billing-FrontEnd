@@ -1,6 +1,6 @@
 'use client';
 
-import type React from 'react';
+import React, { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,13 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle } from 'lucide-react';
-import { setPassword } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 
 export function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, login } = useAuth();
+  const { user, session } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPasswordValue] = useState('');
   const [repassword, setRepassword] = useState('');
@@ -37,8 +37,6 @@ export function SetPasswordForm() {
       setEmail(emailFromParams);
     } else if (user?.email) {
       setEmail(user.email);
-    } else {
-      router.push('/');
     }
 
     if (user && user.isPasswordSet) {
@@ -64,18 +62,26 @@ export function SetPasswordForm() {
     }
 
     try {
-      await setPassword(email, password, repassword);
+      const { error } = await supabase.auth.updateUser({ password: password });
+
+      if (error) throw error;
+
+      const { error: updateProfileError } = await supabase
+        .from('users') // Your public.users table
+        .update({ is_password_set: true })
+        .eq('email', user?.email || email); // Use email to link to public.users table
+
+      if (updateProfileError) {
+        console.error(
+          'Error updating profile is_password_set:',
+          updateProfileError
+        );
+      }
 
       setMessage({
         type: 'success',
         text: 'Password berhasil disetel! Anda akan diarahkan ke dashboard.',
       });
-
-      if (user) {
-        const updatedUser = { ...user, isPasswordSet: true };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        login(localStorage.getItem('token') || '', updatedUser);
-      }
 
       setTimeout(() => {
         router.push(user?.role === 'admin' ? '/admin' : '/dashboard');
@@ -91,18 +97,13 @@ export function SetPasswordForm() {
     }
   };
 
-  if (!email && user === null) {
-    return (
-      <div className="flex h-screen items-center justify-center">Memuat...</div>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Atur Password Baru</CardTitle>
         <CardDescription>
-          Halo {email}! Silakan atur password baru Anda untuk melanjutkan.
+          Halo {email || 'Pengguna'}! Silakan atur password baru Anda untuk
+          melanjutkan.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -153,5 +154,17 @@ export function SetPasswordForm() {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export default function SetPasswordPage() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md space-y-8">
+        <Suspense fallback={<div>Memuat form password...</div>}>
+          <SetPasswordForm />
+        </Suspense>
+      </div>
+    </div>
   );
 }
