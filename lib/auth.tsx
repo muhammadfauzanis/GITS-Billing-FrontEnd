@@ -1,5 +1,3 @@
-// File: lib/auth.tsx
-
 'use client';
 
 import type React from 'react';
@@ -7,9 +5,10 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
+import { toast } from '@/hooks/use-toast';
 
 type AppUser = {
-  id: string; // Ini adalah supabase_auth_id
+  id: string;
   email: string;
   clientId: string | null;
   role: string | null;
@@ -21,6 +20,7 @@ type AuthContextType = {
   session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -29,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
   login: async () => {},
+  loginWithGoogle: async () => {},
   logout: async () => {},
 });
 
@@ -43,41 +44,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(currentSession);
 
       if (currentSession) {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('users')
-          .select('id, client_id, role, is_password_set')
-          .eq('supabase_auth_id', currentSession.user.id) // <-- PERUBAHAN: Gunakan 'supabase_auth_id'
+          .select('id, client_id, role, is_password_set, supabase_auth_id')
+          .eq('email', currentSession.user.email)
           .single();
 
-        if (profile) {
-          const appUser: AppUser = {
-            id: currentSession.user.id,
-            email: currentSession.user.email || '',
-            clientId: profile.client_id ? String(profile.client_id) : null,
-            role: profile.role,
-            isPasswordSet: profile.is_password_set || false,
-          };
-          setUser(appUser);
-        } else {
-          setUser(null);
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching user profile:', error.message);
         }
+
+        if (!profile) {
+          toast({
+            title: 'Akses Ditolak',
+            description:
+              'Akun Google Anda belum terdaftar. Silakan hubungi admin.',
+            variant: 'destructive',
+          });
+          await supabase.auth.signOut();
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        if (profile && !profile.supabase_auth_id) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ supabase_auth_id: currentSession.user.id })
+            .eq('email', currentSession.user.email);
+
+          if (updateError) {
+            console.error('Failed to link supabase auth id:', updateError);
+            await supabase.auth.signOut();
+            return;
+          }
+        }
+
+        const appUser: AppUser = {
+          id: currentSession.user.id,
+          email: currentSession.user.email || '',
+          clientId: profile.client_id ? String(profile.client_id) : null,
+          role: profile.role,
+          isPasswordSet: profile.is_password_set || false,
+        };
+        setUser(appUser);
       } else {
         setUser(null);
       }
       setIsLoading(false);
     };
 
-    // Initial check
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       handleAuthStateChange(initialSession);
     });
 
-    // Listen for changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, currentSession) => {
         handleAuthStateChange(currentSession);
-        // Refresh the page to ensure server components update with the new auth state.
-        // The middleware will handle any necessary redirects.
         router.refresh();
       }
     );
@@ -95,6 +118,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    if (error) throw error;
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -103,7 +133,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, session, isLoading, login, loginWithGoogle, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

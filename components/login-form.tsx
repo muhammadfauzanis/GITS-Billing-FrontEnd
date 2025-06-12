@@ -2,10 +2,6 @@
 
 import type React from 'react';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,55 +13,43 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/lib/auth';
-
-const formSchema = z.object({
-  email: z.string().email({ message: 'Format email tidak valid.' }).min(1, {
-    message: 'Email harus diisi.',
-  }),
-  password: z.string().min(1, {
-    message: 'Password harus diisi.',
-  }),
-});
+import Image from 'next/image';
 
 export function LoginForm() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  // Fungsi yang dijalankan setelah form valid
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
-    form.clearErrors();
+    setError('');
 
     try {
-      await login(values.email, values.password);
+      await login(email, password);
     } catch (err: any) {
       console.error('Login error:', err);
-
-      form.setError('root', {
-        message:
-          err.message === 'Invalid login credentials'
-            ? 'Email atau password yang Anda masukkan salah.'
-            : err.message || 'Login gagal, silakan coba lagi.',
-      });
+      setError('Login gagal. Periksa kembali email dan password Anda.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setIsGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (err: any) {
+      console.error('Google login error:', err);
+      setError('Gagal login dengan Google.');
+      setIsGoogleLoading(false);
     }
   };
 
@@ -78,56 +62,76 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {form.formState.errors.root && (
-              <p className="text-sm font-medium text-red-600">
-                {form.formState.errors.root.message}
-              </p>
+        <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="email@perusahaan.com"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="******"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="email@perusahaan.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading || isGoogleLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading || isGoogleLoading}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || isGoogleLoading}
+            >
               {isLoading ? 'Memproses...' : 'Masuk'}
             </Button>
           </form>
-        </Form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Atau
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full flex items-center gap-2" //
+            onClick={handleGoogleLogin}
+            disabled={isLoading || isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+            ) : (
+              <Image
+                src="/google-logo.png"
+                alt="Google"
+                width={20}
+                height={20}
+              />
+            )}
+            <span>Masuk dengan Google</span>
+          </Button>
+        </div>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-gray-500">
