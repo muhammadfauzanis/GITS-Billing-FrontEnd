@@ -49,9 +49,16 @@ export async function middleware(req: NextRequest) {
       );
     }
 
-    if (profile?.role === 'admin' && !pathname.startsWith('/admin')) {
+    // --- PERUBAHAN DI SINI ---
+    // Izinkan admin untuk mengakses /admin dan juga /dashboard
+    if (
+      profile?.role === 'admin' &&
+      !pathname.startsWith('/admin') &&
+      !pathname.startsWith('/dashboard')
+    ) {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
+    // --- AKHIR PERUBAHAN ---
 
     if (profile?.role !== 'admin' && pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/dashboard', req.url));

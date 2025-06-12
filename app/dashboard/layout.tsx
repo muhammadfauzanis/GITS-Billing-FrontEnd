@@ -19,27 +19,31 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/');
-    } else if (
-      !isLoading &&
-      user &&
-      user.role === 'admin' &&
-      !window.location.pathname.startsWith('/admin')
-    ) {
-      // If an admin tries to access the regular dashboard, redirect to admin panel
-      router.push('/admin');
     }
   }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        Loading...
+        Memuat sesi...
       </div>
     );
   }
 
   if (!user) {
     return null;
+  }
+
+  if (user.role === 'admin') {
+    return (
+      <div className="flex min-h-screen flex-col bg-white">
+        <DashboardHeader />
+        <div className="flex flex-1">
+          <DashboardSidebar />
+          <main className="flex-1 overflow-auto p-6">{children}</main>
+        </div>
+      </div>
+    );
   }
 
   return (
