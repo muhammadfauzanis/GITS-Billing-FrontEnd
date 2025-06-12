@@ -27,14 +27,9 @@ import {
   Trash2,
   AlertCircle,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
-import {
-  getUsers,
-  deleteUser,
-  getClients,
-  updateUserClientId,
-} from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -58,57 +53,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'; // Import AlertDialog components
-import { useToast } from '@/hooks/use-toast'; // Import useToast hook
-
-interface User {
-  id: number;
-  email: string;
-  role: string;
-  client: string;
-  status: string;
-  createdAt: string;
-}
-
-interface Client {
-  id: number;
-  name: string;
-}
+} from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
+import { useAdminStore, type User } from '@/lib/adminStore';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const {
+    users,
+    clients,
+    loading,
+    error,
+    fetchUsers,
+    fetchClients,
+    deleteUser,
+    updateUserClient,
+  } = useAdminStore();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const { toast } = useToast(); // Initialize useToast hook
-
-  const fetchUsers = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await getUsers();
-      setUsers(res.users || []);
-    } catch (error: any) {
-      setError(error.message || 'Gagal memuat data pengguna');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchClients = async () => {
-    const res = await getClients();
-    setClients(res.clients || []);
-  };
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState('');
 
   useEffect(() => {
     fetchUsers();
     fetchClients();
-  }, []);
+  }, [fetchUsers, fetchClients]);
 
   const filteredUsers = users.filter((user) =>
     [user.email, user.role, user.client, user.status].some((field) =>
@@ -116,35 +85,20 @@ export default function UsersPage() {
     )
   );
 
-  const handleDeleteUser = async (userId: number) => {
-    setIsDeleting(userId);
-    try {
-      await deleteUser(userId);
-      setUsers(users.filter((u) => u.id !== userId));
-      toast({
-        // Tampilkan toast sukses
-        title: 'Berhasil!',
-        description: 'Pengguna berhasil dihapus.',
-      });
-    } catch (error: any) {
-      toast({
-        // Tampilkan toast error
-        title: 'Gagal!',
-        description: error.message || 'Gagal menghapus pengguna.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDeleting(null);
-    }
+  const handleDelete = async (userId: number) => {
+    await deleteUser(userId);
+    toast({ title: 'Berhasil!', description: 'Pengguna berhasil dihapus.' });
   };
 
-  const handleEditClick = (id: number) => {
-    setSelectedUserId(id);
+  const handleEditClick = (user: User) => {
+    setSelectedUser(user);
+    const client = clients.find((c) => c.name === user.client);
+    setSelectedClientId(client ? client.id.toString() : '');
     setIsEditOpen(true);
   };
 
   const handleSaveEdit = async () => {
-    if (!selectedUserId || !selectedClientId) {
+    if (!selectedUser || !selectedClientId) {
       toast({
         title: 'Gagal!',
         description: 'Client ID belum dipilih.',
@@ -152,21 +106,12 @@ export default function UsersPage() {
       });
       return;
     }
-    try {
-      await updateUserClientId(selectedUserId, Number(selectedClientId));
-      await fetchUsers();
-      setIsEditOpen(false);
-      toast({
-        title: 'Berhasil!',
-        description: 'Client ID pengguna berhasil diperbarui.',
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Gagal!',
-        description: error.message || 'Gagal memperbarui Client ID pengguna.',
-        variant: 'destructive',
-      });
-    }
+    await updateUserClient(selectedUser.id, Number(selectedClientId));
+    setIsEditOpen(false);
+    toast({
+      title: 'Berhasil!',
+      description: 'Client ID pengguna berhasil diperbarui.',
+    });
   };
 
   return (
@@ -178,16 +123,11 @@ export default function UsersPage() {
             Kelola semua pengguna dalam sistem
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchUsers}>
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
-          </Button>
-          <Button asChild>
-            <Link href="/admin/create-user">
-              <UserPlus className="mr-2 h-4 w-4" /> Buat User Baru
-            </Link>
-          </Button>
-        </div>
+        <Button asChild>
+          <Link href="/admin/create-user">
+            <UserPlus className="mr-2 h-4 w-4" /> Buat User Baru
+          </Link>
+        </Button>
       </div>
 
       {error && (
@@ -212,103 +152,98 @@ export default function UsersPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Dibuat</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          user.role === 'admin' ? 'destructive' : 'secondary'
-                        }
-                      >
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.client || '-'}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          user.status === 'Aktif' ? 'default' : 'secondary'
-                        }
-                      >
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.createdAt}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClick(user.id)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          {' '}
-                          {/* AlertDialog Trigger */}
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={isDeleting === user.id}
-                            >
-                              {isDeleting === user.id ? (
-                                <div className="animate-spin h-4 w-4 border-b-2 border-gray-900 rounded-full"></div>
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Konfirmasi Hapus Pengguna
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Apakah Anda yakin ingin menghapus pengguna "
-                                {user.email}"? Tindakan ini tidak dapat
-                                dibatalkan.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteUser(user.id)}
-                              >
-                                Hapus
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
+          {loading.users ? (
+            <div className="text-center p-10">
+              <Loader2 className="animate-spin h-8 w-8" />
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Dibuat</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            user.role === 'admin' ? 'destructive' : 'secondary'
+                          }
+                        >
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{user.client || '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            user.status === 'Aktif' ? 'default' : 'secondary'
+                          }
+                        >
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{user.createdAt}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditClick(user)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Konfirmasi Hapus
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Yakin ingin menghapus pengguna "{user.email}"?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(user.id)}
+                                >
+                                  Hapus
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Client ID</DialogTitle>
+            <DialogTitle>
+              Edit Client ID untuk {selectedUser?.email}
+            </DialogTitle>
           </DialogHeader>
           <Select value={selectedClientId} onValueChange={setSelectedClientId}>
             <SelectTrigger>

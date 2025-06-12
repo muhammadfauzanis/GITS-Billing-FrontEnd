@@ -1,4 +1,3 @@
-// app/admin/layout.tsx
 'use client';
 
 import type React from 'react';
