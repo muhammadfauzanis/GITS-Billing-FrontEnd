@@ -19,7 +19,8 @@ import { useAuth } from '@/lib/auth';
 import Image from 'next/image';
 
 export function LoginForm() {
-  const { login, loginWithGoogle } = useAuth();
+  // const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -41,17 +42,17 @@ export function LoginForm() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    setIsGoogleLoading(true);
-    try {
-      await loginWithGoogle();
-    } catch (err: any) {
-      console.error('Google login error:', err);
-      setError('Gagal login dengan Google.');
-      setIsGoogleLoading(false);
-    }
-  };
+  // const handleGoogleLogin = async () => {
+  //   setError('');
+  //   setIsGoogleLoading(true);
+  //   try {
+  //     await loginWithGoogle();
+  //   } catch (err: any) {
+  //     console.error('Google login error:', err);
+  //     setError('Gagal login dengan Google.');
+  //     setIsGoogleLoading(false);
+  //   }
+  // };
 
   return (
     <Card>
@@ -113,7 +114,7 @@ export function LoginForm() {
             </div>
           </div>
 
-          <Button
+          {/* <Button
             variant="outline"
             className="w-full flex items-center gap-2" //
             onClick={handleGoogleLogin}
@@ -130,7 +131,7 @@ export function LoginForm() {
               />
             )}
             <span>Masuk dengan Google</span>
-          </Button>
+          </Button> */}
         </div>
       </CardContent>
       <CardFooter className="flex justify-center">

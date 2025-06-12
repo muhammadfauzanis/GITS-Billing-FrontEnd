@@ -1,4 +1,3 @@
-// app/dashboard/settings/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,184 +8,96 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { getBudget, getClientName, setBudget } from '@/lib/api';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { useDashboardStore } from '@/lib/store';
+import { Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
-  const { user, session } = useAuth();
-  const [clientName, setClientName] = useState('');
-  const [isSavingBudget, setIsSavingBudget] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const { fetchSettingsData, settingsData, loading, updateBudget, clientName } =
+    useDashboardStore();
+
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetThreshold, setBudgetThreshold] = useState('');
   const [initialBudget, setInitialBudget] = useState({
     budgetValue: '',
     budgetThreshold: '',
   });
-  const [hasBudgetChanges, setHasBudgetChanges] = useState(false);
-  const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSavingBudget, setIsSavingBudget] = useState(false);
 
   const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   useEffect(() => {
-    const fetchSettingsData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+    fetchSettingsData();
+  }, [fetchSettingsData]);
 
-        const [clientNameResponse, budgetResponse] = await Promise.all([
-          getClientName(),
-          getBudget(),
-        ]);
-
-        setClientName(clientNameResponse.name);
-        setBudgetAmount(String(budgetResponse.budgetValue));
-        setBudgetThreshold(String(budgetResponse.budgetThreshold));
-
-        setInitialBudget({
-          budgetValue: String(budgetResponse.budgetValue),
-          budgetThreshold: String(budgetResponse.budgetThreshold),
-        });
-      } catch (err: any) {
-        console.error('Error fetching settings data:', err);
-        setError(err.message || 'Gagal memuat data pengaturan');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchSettingsData();
+  useEffect(() => {
+    if (settingsData) {
+      const initialValues = {
+        budgetValue: String(settingsData.budgetValue || ''),
+        budgetThreshold: String(settingsData.budgetThreshold || ''),
+      };
+      setBudgetAmount(initialValues.budgetValue);
+      setBudgetThreshold(initialValues.budgetThreshold);
+      setInitialBudget(initialValues);
     }
-  }, [user]);
+  }, [settingsData]);
 
-  const handleSaveChanges = async () => {
-    try {
-      setIsSavingBudget(true);
-
-      const payload: { budget_value?: number; budget_threshold?: number } = {};
-      if (budgetAmount !== initialBudget.budgetValue) {
-        payload.budget_value = Number(budgetAmount);
-      }
-      if (budgetThreshold !== initialBudget.budgetThreshold) {
-        payload.budget_threshold = Number(budgetThreshold);
-      }
-
-      if (Object.keys(payload).length === 0) {
-        console.log('Tidak ada perubahan budget. Skip update ke server.');
-        setHasBudgetChanges(false);
-        setIsEditingBudget(false);
-        return;
-      }
-
-      await setBudget(payload);
-
-      setInitialBudget({
-        budgetValue: budgetAmount,
-        budgetThreshold: budgetThreshold,
-      });
-
-      setHasBudgetChanges(false);
-      setIsEditingBudget(false);
-    } catch (err: any) {
-      console.error('Error saving budget:', err);
-      setError(err.message || 'Gagal menyimpan pengaturan budget');
-    } finally {
-      setIsSavingBudget(false);
-    }
+  const handleBudgetSave = async () => {
+    setIsSavingBudget(true);
+    await updateBudget({
+      budget_value: Number(budgetAmount),
+      budget_threshold: Number(budgetThreshold),
+    });
+    setInitialBudget({
+      budgetValue: budgetAmount,
+      budgetThreshold: budgetThreshold,
+    });
+    toast({
+      title: 'Sukses',
+      description: 'Pengaturan budget berhasil disimpan.',
+    });
+    setIsSavingBudget(false);
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsChangingPassword(true);
-    setPasswordMessage(null);
-
-    if (!newPassword || !confirmNewPassword) {
-      setPasswordMessage({
-        type: 'error',
-        text: 'Semua field password harus diisi.',
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'Konfirmasi password tidak cocok.',
+        variant: 'destructive',
       });
-      setIsChangingPassword(false);
       return;
     }
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordMessage({
-        type: 'error',
-        text: 'Konfirmasi password baru tidak cocok.',
+    setIsSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
       });
-      setIsChangingPassword(false);
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordMessage({
-        type: 'error',
-        text: 'Password baru minimal 6 karakter.',
-      });
-      setIsChangingPassword(false);
-      return;
-    }
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) throw error;
-
-      const { error: updateProfileError } = await supabase
-        .from('users') // Your public.users table
-        .update({ is_password_set: true })
-        .eq('email', user?.email || session?.user.email); // Link to public.users table by email
-
-      if (updateProfileError) {
-        console.error(
-          'Error updating profile is_password_set after password change:',
-          updateProfileError
-        );
-      }
-
-      setPasswordMessage({
-        type: 'success',
-        text: 'Password berhasil diganti!',
-      });
+    } else {
+      toast({ title: 'Sukses', description: 'Password berhasil diubah.' });
       setNewPassword('');
-      setConfirmNewPassword('');
-    } catch (err: any) {
-      console.error('Error changing password:', err);
-      setPasswordMessage({
-        type: 'error',
-        text:
-          err.message ||
-          'Gagal mengganti password. Pastikan password baru memenuhi kriteria.',
-      });
-    } finally {
-      setIsChangingPassword(false);
+      setConfirmPassword('');
     }
+    setIsSavingPassword(false);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        Loading settings...
-      </div>
-    );
-  }
+  const isBudgetDirty =
+    initialBudget.budgetValue !== budgetAmount ||
+    initialBudget.budgetThreshold !== budgetThreshold;
+  const isPasswordFormValid =
+    newPassword.length > 0 && confirmPassword.length > 0;
 
   return (
     <div className="space-y-6">
@@ -197,166 +108,115 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="account">
-        <TabsList>
-          <TabsTrigger value="account">Akun</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle>Informasi Akun</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input value={user?.email || ''} disabled />
+          </div>
+          <div className="space-y-2">
+            <Label>Client</Label>
+            <Input
+              value={
+                clientName || (loading.dashboard ? 'Memuat...' : 'Tidak ada')
+              }
+              disabled
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="account" className="space-y-6 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informasi Akun</CardTitle>
-              <CardDescription>Perbarui informasi akun Anda</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Pengaturan Billing</CardTitle>
+            <CardDescription>
+              Tombol simpan akan aktif jika ada perubahan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading.settings ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" defaultValue={user?.email} disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-name">Client Name</Label>
-                  <Input id="client-name" defaultValue={clientName} disabled />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Ganti Password</CardTitle>
-              <CardDescription>Ubah password akun Anda.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                {passwordMessage && (
-                  <Alert
-                    variant={
-                      passwordMessage.type === 'error'
-                        ? 'destructive'
-                        : 'default'
-                    }
-                  >
-                    {passwordMessage.type === 'error' ? (
-                      <AlertCircle className="h-4 w-4" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    <AlertTitle>
-                      {passwordMessage.type === 'error' ? 'Error' : 'Berhasil'}
-                    </AlertTitle>
-                    <AlertDescription>{passwordMessage.text}</AlertDescription>
-                  </Alert>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">Password Baru</Label>
+                  <Label htmlFor="budget-amount">Budget Bulanan (Rp)</Label>
                   <Input
-                    id="new-password"
-                    type="password"
-                    placeholder="Minimal 6 karakter"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    disabled={isChangingPassword}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-new-password">
-                    Konfirmasi Password Baru
-                  </Label>
-                  <Input
-                    id="confirm-new-password"
-                    type="password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    disabled={isChangingPassword}
-                  />
-                </div>
-                <Button type="submit" disabled={isChangingPassword}>
-                  {isChangingPassword
-                    ? 'Mengganti Password...'
-                    : 'Ganti Password'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="billing" className="space-y-6 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pengaturan Billing</CardTitle>
-              <CardDescription>
-                Kelola pengaturan billing dan budget
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="budget-budgetValue">
-                    Budget Bulanan (Rp)
-                  </Label>
-                  <Input
-                    id="budget-budgetValue"
+                    id="budget-amount"
                     value={budgetAmount}
-                    disabled={!isEditingBudget}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setBudgetAmount(value);
-                      setHasBudgetChanges(
-                        value !== initialBudget.budgetValue ||
-                          budgetThreshold !== initialBudget.budgetThreshold
-                      );
-                    }}
+                    onChange={(e) => setBudgetAmount(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="budget-budgetThreshold">
+                  <Label htmlFor="budget-threshold">
                     Ambang Peringatan (%)
                   </Label>
                   <Input
-                    id="budget-budgetThreshold"
+                    id="budget-threshold"
                     value={budgetThreshold}
-                    disabled={!isEditingBudget}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setBudgetThreshold(value);
-                      setHasBudgetChanges(
-                        value !== initialBudget.budgetThreshold ||
-                          budgetAmount !== initialBudget.budgetValue
-                      );
-                    }}
+                    onChange={(e) => setBudgetThreshold(e.target.value)}
                   />
                 </div>
+                <Button
+                  onClick={handleBudgetSave}
+                  disabled={!isBudgetDirty || isSavingBudget}
+                >
+                  {isSavingBudget && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Simpan Budget
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Ganti Password</CardTitle>
+            <CardDescription>
+              Tombol akan aktif setelah semua kolom diisi.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordSave} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Password Baru</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Konfirmasi Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
               </div>
               <Button
-                onClick={
-                  isEditingBudget
-                    ? hasBudgetChanges
-                      ? handleSaveChanges
-                      : undefined
-                    : () => setIsEditingBudget(true)
-                }
-                disabled={
-                  isSavingBudget || (isEditingBudget && !hasBudgetChanges)
-                }
+                type="submit"
+                disabled={!isPasswordFormValid || isSavingPassword}
               >
-                {isSavingBudget
-                  ? 'Menyimpan...'
-                  : isEditingBudget
-                  ? hasBudgetChanges
-                    ? 'Simpan Perubahan'
-                    : 'Simpan Perubahan'
-                  : 'Edit Budget'}
+                {isSavingPassword && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Ganti Password
               </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

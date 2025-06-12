@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -8,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getClients } from '@/lib/api';
+import { useDashboardStore } from '@/lib/store';
 
 type Props = {
   onClientChange: (clientId: string) => void;
@@ -16,20 +15,7 @@ type Props = {
 };
 
 export function ClientSelector({ onClientChange, selectedClientId }: Props) {
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
-
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const response = await getClients();
-        setClients(response.clients);
-      } catch (err) {
-        console.error('Failed to fetch clients:', err);
-      }
-    };
-
-    fetchClients();
-  }, []);
+  const clients = useDashboardStore((state) => state.clients);
 
   return (
     <Select value={selectedClientId} onValueChange={onClientChange}>

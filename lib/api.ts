@@ -1,3 +1,4 @@
+// lib/api.ts
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
 
@@ -7,14 +8,40 @@ const axiosInstance = axios.create({
   baseURL: BASE_API_URL,
 });
 
+// Caching token untuk menghindari panggilan berulang
+let cachedToken: string | null = null;
+let tokenExpiry: number | null = null;
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    cachedToken = session?.access_token || null;
+    tokenExpiry = session?.expires_at ? session.expires_at * 1000 : null;
+  } else if (event === 'SIGNED_OUT') {
+    cachedToken = null;
+    tokenExpiry = null;
+  }
+});
+
 axiosInstance.interceptors.request.use(
   async (config) => {
+    // Gunakan token dari cache jika valid
+    if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
+      config.headers.Authorization = `Bearer ${cachedToken}`;
+      return config;
+    }
+
+    // Jika token tidak ada atau kedaluwarsa, baru panggil getSession
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
+    const token = session?.access_token;
+
+    if (token) {
+      cachedToken = token;
+      tokenExpiry = session.expires_at ? session.expires_at * 1000 : null;
+      config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => {
@@ -22,6 +49,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
+// ... sisa kode export fungsi API tetap sama
 export const registerUser = async (userData: {
   email: string;
   password: string;

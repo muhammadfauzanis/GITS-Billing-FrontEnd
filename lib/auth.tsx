@@ -1,3 +1,4 @@
+// lib/auth.tsx
 'use client';
 
 import type React from 'react';
@@ -7,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { toast } from '@/hooks/use-toast';
 
-type AppUser = {
+export type AppUser = {
   id: string;
   email: string;
   clientId: string | null;
@@ -40,8 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuthStateChange = async (currentSession: Session | null) => {
+    const handleAuthStateChange = async (
+      event: string,
+      currentSession: Session | null
+    ) => {
       setSession(currentSession);
+      setIsLoading(true);
 
       if (currentSession) {
         const { data: profile, error } = await supabase
@@ -55,13 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!profile) {
-          toast({
-            title: 'Akses Ditolak',
-            description:
-              'Akun Google Anda belum terdaftar. Silakan hubungi admin.',
-            variant: 'destructive',
-          });
-          await supabase.auth.signOut();
+          if (event === 'SIGNED_IN') {
+            toast({
+              title: 'Akses Ditolak',
+              description:
+                'Akun Google Anda belum terdaftar. Silakan hubungi admin.',
+              variant: 'destructive',
+            });
+            await supabase.auth.signOut();
+          }
           setUser(null);
           setIsLoading(false);
           return;
@@ -88,6 +95,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isPasswordSet: profile.is_password_set || false,
         };
         setUser(appUser);
+
+        if (event === 'SIGNED_IN') {
+          if (!appUser.isPasswordSet) {
+            router.push(`/set-password?email=${appUser.email}`);
+          } else if (appUser.role === 'admin') {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
+        }
       } else {
         setUser(null);
       }
@@ -95,20 +112,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      handleAuthStateChange(initialSession);
+      handleAuthStateChange('INITIAL_SESSION', initialSession);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, currentSession) => {
-        handleAuthStateChange(currentSession);
-        router.refresh();
+      (event, currentSession) => {
+        handleAuthStateChange(event, currentSession);
       }
     );
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [router]);
+    // UBAH KEMBALI KE ARRAY KOSONG
+  }, []);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({

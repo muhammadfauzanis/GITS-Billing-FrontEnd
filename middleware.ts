@@ -1,5 +1,3 @@
-// File: middleware.ts
-
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -30,26 +28,22 @@ export async function middleware(req: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role, is_password_set')
-      .eq('supabase_auth_id', session.user.id) // <-- PERUBAHAN 1: Gunakan 'supabase_auth_id'
+      .eq('supabase_auth_id', session.user.id)
       .single();
 
     if (profileError) {
       console.error('Middleware profile error:', profileError);
-      // Jika profil tidak ditemukan, mungkin ada inkonsistensi data. Logout paksa.
       await supabase.auth.signOut();
       return NextResponse.redirect(new URL('/', req.url));
     }
 
-    // Arahkan ke set-password jika belum diatur
     if (pathname !== '/set-password' && profile && !profile.is_password_set) {
       return NextResponse.redirect(
         new URL(`/set-password?email=${session.user.email}`, req.url)
       );
     }
 
-    // Arahkan dari halaman publik JIKA password sudah diatur
     if (publicPaths.includes(pathname) && profile && profile.is_password_set) {
-      // <-- PERUBAHAN 2: Tambahkan kondisi ini
       return NextResponse.redirect(
         new URL(profile?.role === 'admin' ? '/admin' : '/dashboard', req.url)
       );

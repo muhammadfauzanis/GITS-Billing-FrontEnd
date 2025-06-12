@@ -1,3 +1,4 @@
+// app/dashboard/usage/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,8 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { BillingUsageChart } from '@/components/billing-usage-chart';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
 import {
   Select,
@@ -20,108 +20,61 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  getAllProjectBreakdown,
-  getMonthlyUsage,
-  getOverallServiceBreakdown,
-} from '@/lib/api';
 import { BillingProjectBreakdown } from '@/components/billing-project-breakdown';
+import { useDashboardStore } from '@/lib/store';
 
 export default function UsagePage() {
-  const [monthlyUsage, setMonthlyUsage] = useState<any>(null);
-  const [serviceBreakdown, setServiceBreakdown] = useState<any[]>([]);
-  const [projectBreakdown, setProjectBreakdown] = useState<any>(null);
+  // State lokal hanya untuk filter, bukan untuk data
   const [activeTab, setActiveTab] = useState<'overview' | 'projects'>(
     'overview'
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth() + 1
   );
   const [selectedYear, setSelectedYear] = useState<number>(
     new Date().getFullYear()
   );
-  const [groupBy, setGroupBy] = useState<'service' | 'project'>('service');
-  const [timeRange, setTimeRange] = useState<string>('6');
 
+  // Ambil state dan actions dari store Zustand
+  const { fetchUsageData, usageData, loading, error, selectedClientId } =
+    useDashboardStore();
+
+  // useEffect sekarang hanya bergantung pada filter dan selectedClientId
   useEffect(() => {
-    const fetchUsageData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+    // Hanya fetch data jika client sudah dipilih
+    if (selectedClientId) {
+      fetchUsageData({ month: selectedMonth, year: selectedYear });
+    }
+  }, [selectedMonth, selectedYear, selectedClientId, fetchUsageData]);
 
-        const commonRequests = [
-          getMonthlyUsage(groupBy, Number.parseInt(timeRange)),
-          getOverallServiceBreakdown(selectedMonth, selectedYear),
-        ];
-
-        const [usageResponse, breakdownResponse, projectsUsageBreakdown] =
-          await Promise.all([
-            ...commonRequests,
-            activeTab === 'projects'
-              ? getAllProjectBreakdown(selectedMonth, selectedYear)
-              : Promise.resolve(null),
-          ]);
-
-        setMonthlyUsage(usageResponse);
-        setServiceBreakdown(breakdownResponse);
-        if (activeTab === 'projects' && projectsUsageBreakdown) {
-          setProjectBreakdown(projectsUsageBreakdown);
-        }
-      } catch (err: any) {
-        console.error('Error fetching usage data:', err);
-        setError(err.message || 'Gagal memuat data penggunaan');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUsageData();
-  }, [selectedMonth, selectedYear, groupBy, timeRange, activeTab]);
-
-  const handleMonthChange = (value: string) => {
-    setSelectedMonth(Number.parseInt(value));
-  };
-
-  const handleYearChange = (value: string) => {
-    setSelectedYear(Number.parseInt(value));
-  };
-
-  const handleGroupByChange = (value: string) => {
-    setGroupBy(value as 'service' | 'project');
-  };
-
-  const handleTimeRangeChange = (value: string) => {
-    setTimeRange(value);
-  };
-
-  const months = [
-    { value: '1', label: 'Januari' },
-    { value: '2', label: 'Februari' },
-    { value: '3', label: 'Maret' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'Mei' },
-    { value: '6', label: 'Juni' },
-    { value: '7', label: 'Juli' },
-    { value: '8', label: 'Agustus' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'Oktober' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'Desember' },
-  ];
-
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+  }));
   const years = [
     { value: '2023', label: '2023' },
     { value: '2024', label: '2024' },
     { value: '2025', label: '2025' },
   ];
 
-  if (isLoading) {
+  const currentMonthLabel = months.find(
+    (m) => m.value === selectedMonth.toString()
+  )?.label;
+
+  // Tampilkan pesan jika belum ada client yang dipilih (untuk admin)
+  if (!selectedClientId) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        Loading...
-      </div>
+      <Alert
+        variant="default"
+        className="border-blue-200 bg-blue-50 text-blue-700"
+      >
+        <AlertCircle className="h-4 w-4 !text-blue-700" />
+        <AlertTitle>Pilih Client</AlertTitle>
+        <AlertDescription>
+          Silakan pilih client di halaman Dashboard utama untuk melihat data
+          penggunaan.
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -137,7 +90,7 @@ export default function UsagePage() {
         <div className="flex gap-2">
           <Select
             value={selectedMonth.toString()}
-            onValueChange={handleMonthChange}
+            onValueChange={(v) => setSelectedMonth(Number(v))}
           >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Pilih bulan" />
@@ -152,7 +105,7 @@ export default function UsagePage() {
           </Select>
           <Select
             value={selectedYear.toString()}
-            onValueChange={handleYearChange}
+            onValueChange={(v) => setSelectedYear(Number(v))}
           >
             <SelectTrigger className="w-[100px]">
               <SelectValue placeholder="Pilih tahun" />
@@ -176,101 +129,71 @@ export default function UsagePage() {
         </Alert>
       )}
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(val) => setActiveTab(val as 'overview' | 'projects')}
-      >
-        <TabsList>
-          <TabsTrigger value="overview">Service Overview</TabsTrigger>
-          <TabsTrigger value="projects">Project Overview</TabsTrigger>
-        </TabsList>
+      {loading.usage ? (
+        <div className="flex h-[calc(100vh-10rem)] items-center justify-center">
+          <Loader2 className="animate-spin h-8 w-8" />
+          <span className="ml-2">Memuat data penggunaan...</span>
+        </div>
+      ) : (
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as 'overview' | 'projects')}
+        >
+          <TabsList>
+            <TabsTrigger value="overview">Service Overview</TabsTrigger>
+            <TabsTrigger value="projects">Project Overview</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="space-y-6 pt-4">
-          {/* <div className="flex justify-between">
-            <div className="flex gap-2">
-              <Select value={groupBy} onValueChange={handleGroupByChange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Kelompokkan berdasarkan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="service">Layanan</SelectItem>
-                  <SelectItem value="project">Proyek</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={timeRange} onValueChange={handleTimeRangeChange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Rentang waktu" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">3 bulan</SelectItem>
-                  <SelectItem value="6">6 bulan</SelectItem>
-                  <SelectItem value="12">12 bulan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div> */}
+          <TabsContent value="overview" className="space-y-6 pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Breakdown Layanan</CardTitle>
+                <CardDescription>
+                  Biaya per layanan GCP untuk bulan {currentMonthLabel}{' '}
+                  {selectedYear}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {usageData?.serviceBreakdown &&
+                usageData.serviceBreakdown.length > 0 ? (
+                  <BillingServiceBreakdown
+                    data={usageData.serviceBreakdown}
+                    showAll
+                  />
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                    Tidak ada data tersedia.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* <Card>
-            <CardHeader>
-              <CardTitle>Tren Penggunaan</CardTitle>
-              <CardDescription>
-                Penggunaan GCP selama {timeRange} bulan terakhir berdasarkan{' '}
-                {groupBy === 'service' ? 'layanan' : 'proyek'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {monthlyUsage ? (
-                <BillingUsageChart data={monthlyUsage} />
-              ) : (
-                <div className="flex h-[300px] items-center justify-center">
-                  Tidak ada data tersedia
-                </div>
-              )}
-            </CardContent>
-          </Card> */}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Breakdown Layanan</CardTitle>
-              <CardDescription>
-                Biaya per layanan GCP untuk bulan{' '}
-                {
-                  months.find((m) => m.value === selectedMonth.toString())
-                    ?.label
-                }{' '}
-                {selectedYear}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {serviceBreakdown && serviceBreakdown.length > 0 ? (
-                <BillingServiceBreakdown data={serviceBreakdown} showAll />
-              ) : (
-                <div className="flex h-[300px] items-center justify-center">
-                  Tidak ada data tersedia
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="projects" className="space-y-6 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Penggunaan Project</CardTitle>
-              <CardDescription>Biaya per project untuk bulan</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {projectBreakdown ? (
-                <BillingProjectBreakdown data={projectBreakdown} showAll />
-              ) : (
-                <div className="flex h-[300px] items-center justify-center">
-                  Tidak ada data tersedia
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="projects" className="space-y-6 pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Penggunaan Project</CardTitle>
+                <CardDescription>
+                  Biaya per project untuk bulan {currentMonthLabel}{' '}
+                  {selectedYear}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {usageData?.projectBreakdown ? (
+                  <BillingProjectBreakdown
+                    data={usageData.projectBreakdown}
+                    showAll
+                  />
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                    Tidak ada data tersedia.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
