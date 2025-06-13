@@ -1,7 +1,7 @@
-// app/dashboard/usage/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -21,13 +21,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BillingProjectBreakdown } from '@/components/billing-project-breakdown';
+import { BillingYearlyChart } from '@/components/billing-yearly-chart';
 import { useDashboardStore } from '@/lib/store';
 
-export default function UsagePage() {
-  // State lokal hanya untuk filter, bukan untuk data
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects'>(
-    'overview'
-  );
+function UsagePageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const activeTab = searchParams.get('tab') || 'overview';
+
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth() + 1
   );
@@ -35,17 +38,38 @@ export default function UsagePage() {
     new Date().getFullYear()
   );
 
-  // Ambil state dan actions dari store Zustand
-  const { fetchUsageData, usageData, loading, error, selectedClientId } =
-    useDashboardStore();
+  const {
+    fetchUsageData,
+    fetchYearlySummaryData,
+    usageData,
+    yearlySummaryData,
+    loading,
+    error,
+    selectedClientId,
+  } = useDashboardStore();
 
-  // useEffect sekarang hanya bergantung pada filter dan selectedClientId
   useEffect(() => {
-    // Hanya fetch data jika client sudah dipilih
     if (selectedClientId) {
-      fetchUsageData({ month: selectedMonth, year: selectedYear });
+      if (activeTab === 'yearly-summary') {
+        fetchYearlySummaryData({ year: selectedYear });
+      } else {
+        fetchUsageData({ month: selectedMonth, year: selectedYear });
+      }
     }
-  }, [selectedMonth, selectedYear, selectedClientId, fetchUsageData]);
+  }, [
+    selectedMonth,
+    selectedYear,
+    selectedClientId,
+    fetchUsageData,
+    fetchYearlySummaryData,
+    activeTab,
+  ]);
+
+  const handleTabChange = (tabValue: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tabValue);
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: (i + 1).toString(),
@@ -61,7 +85,6 @@ export default function UsagePage() {
     (m) => m.value === selectedMonth.toString()
   )?.label;
 
-  // Tampilkan pesan jika belum ada client yang dipilih (untuk admin)
   if (!selectedClientId) {
     return (
       <Alert
@@ -88,21 +111,23 @@ export default function UsagePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Select
-            value={selectedMonth.toString()}
-            onValueChange={(v) => setSelectedMonth(Number(v))}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Pilih bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month) => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {activeTab !== 'yearly-summary' && (
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(v) => setSelectedMonth(Number(v))}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Pilih bulan" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select
             value={selectedYear.toString()}
             onValueChange={(v) => setSelectedYear(Number(v))}
@@ -129,22 +154,23 @@ export default function UsagePage() {
         </Alert>
       )}
 
-      {loading.usage ? (
-        <div className="flex h-[calc(100vh-10rem)] items-center justify-center">
-          <Loader2 className="animate-spin h-8 w-8" />
-          <span className="ml-2">Memuat data penggunaan...</span>
-        </div>
-      ) : (
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => setActiveTab(val as 'overview' | 'projects')}
-        >
-          <TabsList>
-            <TabsTrigger value="overview">Service Overview</TabsTrigger>
-            <TabsTrigger value="projects">Project Overview</TabsTrigger>
-          </TabsList>
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="space-y-4"
+      >
+        <TabsList>
+          <TabsTrigger value="overview">Service Overview</TabsTrigger>
+          <TabsTrigger value="projects">Project Overview</TabsTrigger>
+          <TabsTrigger value="yearly-summary">Ringkasan Tahunan</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="overview" className="space-y-6 pt-4">
+        <TabsContent value="overview" className="space-y-6 pt-4">
+          {loading.usage ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="animate-spin h-8 w-8 text-primary" />
+            </div>
+          ) : (
             <Card>
               <CardHeader>
                 <CardTitle>Breakdown Layanan</CardTitle>
@@ -167,9 +193,15 @@ export default function UsagePage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          <TabsContent value="projects" className="space-y-6 pt-4">
+        <TabsContent value="projects" className="space-y-6 pt-4">
+          {loading.usage ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="animate-spin h-8 w-8 text-primary" />
+            </div>
+          ) : (
             <Card>
               <CardHeader>
                 <CardTitle>Penggunaan Project</CardTitle>
@@ -191,9 +223,31 @@ export default function UsagePage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="yearly-summary" className="space-y-6 pt-4">
+          {loading.yearlySummary ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="animate-spin h-8 w-8 text-primary" />
+            </div>
+          ) : yearlySummaryData ? (
+            <BillingYearlyChart data={yearlySummaryData} showAll={true} />
+          ) : (
+            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+              Tidak ada data ringkasan tahunan untuk ditampilkan.
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+export default function UsagePageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <UsagePageContent />
+    </Suspense>
   );
 }

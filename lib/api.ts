@@ -8,7 +8,6 @@ const axiosInstance = axios.create({
   baseURL: BASE_API_URL,
 });
 
-// Caching token untuk menghindari panggilan berulang
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
@@ -326,5 +325,25 @@ export const setBudget = async (
       throw new Error(error.response.data.message || 'Failed to set budget');
     }
     throw new Error(error.message || 'Failed to set budget');
+  }
+};
+
+export const getYearlySummary = async (year: number, clientId?: string) => {
+  try {
+    const params: any = { year };
+    if (clientId) {
+      params.clientId = clientId;
+    }
+    const response = await axiosInstance.get('/billing/yearly-summary', {
+      params,
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to fetch yearly summary'
+      );
+    }
+    throw new Error(error.message || 'Failed to fetch yearly summary');
   }
 };

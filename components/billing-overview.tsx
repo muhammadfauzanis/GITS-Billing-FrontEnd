@@ -15,7 +15,7 @@ interface BillingOverviewProps {
       rawValue: number;
       label: string;
     };
-    projection: {
+    yearToDateTotal: {
       value: string;
       rawValue: number;
       label: string;
@@ -33,7 +33,7 @@ export function BillingOverview({ data }: BillingOverviewProps) {
   const isIncrease = Number.parseFloat(data.currentMonth.percentageChange) > 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* Current Month */}
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
@@ -74,21 +74,9 @@ export function BillingOverview({ data }: BillingOverviewProps) {
         </div>
       </div>
 
-      {/* <div className="rounded-lg border bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-500">Proyeksi</p>
-        </div>
-        <div className="mt-2">
-          <p className="text-xl xl:text-2xl font-bold">
-            {data.projection.value}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">{data.projection.label}</p>
-        </div>
-      </div> */}
-
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-500">Budget</p>
+          <p className="text-sm font-medium text-gray-500">Budget Bulan Ini</p>
           <AlertTriangle className="h-4 w-4 text-red-500" />
         </div>
         <div className="mt-2">
@@ -100,6 +88,22 @@ export function BillingOverview({ data }: BillingOverviewProps) {
             />
           </div>
           <p className="mt-1 text-xs text-gray-500">{data.budget.label}</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-gray-500">
+            Tahun ini (Year to Date)
+          </p>
+        </div>
+        <div className="mt-2">
+          <p className="text-xl xl:text-2xl font-bold">
+            {data.yearToDateTotal.value}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            {data.yearToDateTotal.label}
+          </p>
         </div>
       </div>
     </div>

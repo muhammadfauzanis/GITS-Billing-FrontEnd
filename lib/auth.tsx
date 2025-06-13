@@ -3,7 +3,7 @@
 
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { toast } from '@/hooks/use-toast';
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleAuthStateChange = async (
@@ -57,14 +58,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching user profile:', error.message);
+          setUser(null);
+          setIsLoading(false);
+          return;
         }
 
         if (!profile) {
           if (event === 'SIGNED_IN') {
             toast({
               title: 'Akses Ditolak',
-              description:
-                'Akun Google Anda belum terdaftar. Silakan hubungi admin.',
+              description: 'Akun Anda belum terdaftar. Silakan hubungi admin.',
               variant: 'destructive',
             });
             await supabase.auth.signOut();
@@ -96,13 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(appUser);
 
+        // Hanya lakukan redirect/push jika user baru saja login (SIGNED_IN)
         if (event === 'SIGNED_IN') {
           if (!appUser.isPasswordSet) {
             router.push(`/set-password?email=${appUser.email}`);
-          } else if (appUser.role === 'admin') {
-            router.push('/admin');
-          } else {
-            router.push('/dashboard');
+          } else if (pathname === '/' || pathname === '/login') {
+            // Jika sudah login dan masih di halaman login, arahkan ke dashboard
+            router.push(appUser.role === 'admin' ? '/admin' : '/dashboard');
           }
         }
       } else {
@@ -111,12 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     };
 
+    // Panggil handleAuthStateChange saat komponen pertama kali dimuat
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       handleAuthStateChange('INITIAL_SESSION', initialSession);
     });
 
+    // Setup listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        // Event TOKEN_REFRESHED terjadi saat user kembali ke tab, kita tidak perlu
+        // melakukan redirect apa pun, cukup update sesi jika perlu.
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(currentSession);
+          return;
+        }
+
+        // Untuk event lain seperti SIGNED_IN atau SIGNED_OUT, jalankan logika lengkap
         handleAuthStateChange(event, currentSession);
       }
     );
@@ -124,8 +137,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       authListener.subscription.unsubscribe();
     };
-    // UBAH KEMBALI KE ARRAY KOSONG
-  }, []);
+    // --- PERUBAHAN PENTING ADA DI SINI ---
+    // Kita menambahkan router dan pathname ke dependency array.
+    // Ini memastikan useEffect akan "memperbarui" logikanya setiap kali Anda pindah halaman,
+    // sehingga tidak akan lagi memaksa kembali ke '/dashboard'.
+  }, [router, pathname]);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
