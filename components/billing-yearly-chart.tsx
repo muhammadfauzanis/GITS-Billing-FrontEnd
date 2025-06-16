@@ -25,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 
 interface YearlyUsageData {
   data: Array<{
@@ -102,9 +103,7 @@ const CustomTooltip = ({
         <p className="font-bold text-base mb-2">{label}</p>
         <div className="flex justify-between items-baseline mb-2">
           <span className="text-sm text-muted-foreground">Total</span>
-          <span className="text-xl font-bold">{`Rp ${total.toLocaleString(
-            'id-ID'
-          )}`}</span>
+          <span className="text-xl font-bold">{formatCurrency(total)}</span>
         </div>
         <div className="w-full h-px bg-border my-2" />
         <div className="space-y-1">
@@ -187,8 +186,7 @@ export function BillingYearlyChart({
         };
         let total = 0;
         sortedServices.forEach((service) => {
-          const raw = service.months[month] || 0;
-          const cost = raw > 0 ? raw : 0; // ⬅️ HIDE nilai negatif
+          const cost = service.months[month] || 0;
           monthData[service.name] = cost;
           total += cost;
         });
@@ -246,7 +244,7 @@ export function BillingYearlyChart({
             <CardContent>
               <p className="text-2xl font-bold">
                 {`Rp ${grandTotal.toLocaleString('id-ID', {
-                  maximumFractionDigits: 0,
+                  maximumFractionDigits: 2,
                 })}`}
               </p>
             </CardContent>
@@ -315,7 +313,7 @@ export function BillingYearlyChart({
                   </TableCell>
                   <TableCell className="text-right">
                     {`Rp ${item.total.toLocaleString('id-ID', {
-                      maximumFractionDigits: 0,
+                      maximumFractionDigits: 2,
                     })}`}
                   </TableCell>
                 </TableRow>

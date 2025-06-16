@@ -104,6 +104,16 @@ export function BillingServiceBreakdown({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {showAll && data?.total && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Total Biaya Layanan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{data.total.value}</p>
+            </CardContent>
+          </Card>
+        )}
         <div className="flex flex-col xl:flex-row gap-4 items-center justify-center">
           <div className="h-[300px] w-full flex justify-center items-center">
             <ResponsiveContainer width="100%" height="100%">
