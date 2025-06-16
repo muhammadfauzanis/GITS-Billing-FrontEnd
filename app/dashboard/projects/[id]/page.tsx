@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
 import {
   Select,
@@ -69,30 +69,24 @@ export default function ProjectDetailPage() {
     setSelectedYear(Number.parseInt(value));
   };
 
-  const months = [
-    { value: '1', label: 'Januari' },
-    { value: '2', label: 'Februari' },
-    { value: '3', label: 'Maret' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'Mei' },
-    { value: '6', label: 'Juni' },
-    { value: '7', label: 'Juli' },
-    { value: '8', label: 'Agustus' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'Oktober' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'Desember' },
-  ];
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+  }));
 
   const years = [
     { value: '2024', label: '2024' },
     { value: '2025', label: '2025' },
   ];
 
+  const currentMonthLabel = months.find(
+    (m) => m.value === selectedMonth.toString()
+  )?.label;
+
   if (isLoading) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        Loading...
+        <Loader2 className="animate-spin h-8 w-8" />
       </div>
     );
   }
@@ -153,63 +147,39 @@ export default function ProjectDetailPage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Ringkasan</TabsTrigger>
-          <TabsTrigger value="details">Detail Biaya</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle>Total Biaya</CardTitle>
+          <CardDescription>
+            Total biaya untuk bulan {currentMonthLabel} {selectedYear}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-4xl font-bold">
+            {projectData?.total?.value || 'Rp 0'}
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="overview" className="space-y-6 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Biaya</CardTitle>
-              <CardDescription>
-                Total biaya untuk bulan{' '}
-                {
-                  months.find((m) => m.value === selectedMonth.toString())
-                    ?.label
-                }{' '}
-                {selectedYear}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold">
-                {projectData?.total?.value || 'Rp 0'}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Breakdown Layanan</CardTitle>
-              <CardDescription>Biaya per layanan GCP</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {projectData?.breakdown && projectData.breakdown.length > 0 ? (
-                <BillingServiceBreakdown data={projectData.breakdown} showAll />
-              ) : (
-                <div className="flex h-[300px] items-center justify-center">
-                  Tidak ada data tersedia
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="details" className="pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Detail Biaya</CardTitle>
-              <CardDescription>Detail biaya per layanan</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Detail biaya akan ditampilkan di sini.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {projectData?.breakdown && projectData.breakdown.length > 0 ? (
+        <BillingServiceBreakdown
+          data={projectData}
+          showAll={true} // Tampilkan semua layanan untuk detail proyek
+          currentMonthLabel={currentMonthLabel}
+          selectedYear={selectedYear}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Breakdown Layanan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+              Tidak ada data tersedia untuk periode ini.
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
