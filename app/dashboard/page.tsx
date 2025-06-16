@@ -1,17 +1,9 @@
-// app/dashboard/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { BillingOverview } from '@/components/billing-overview';
 import { ClientSelector } from '@/components/ClientSelector';
 import { useAuth } from '@/lib/auth';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { ProjectsList } from '@/components/projects-list';
@@ -24,29 +16,32 @@ import { BillingYearlyChart } from '@/components/billing-yearly-chart';
 
 export default function DashboardPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
-
-  // Ambil state dan actions dari Zustand
   const {
-    // Actions
     initializeDashboard,
     fetchDashboardData,
     handleClientChange,
     setClients,
-    fetchYearlySummaryData,
-    // State
+    fetchYearlyUsageData,
     selectedClientId,
     dashboardData,
-    yearlySummaryData,
     yearlyUsageData,
     loading,
     clientName,
     error,
   } = useDashboardStore();
 
+  // Definisikan bulan dan tahun untuk halaman dashboard
+  const [currentMonth] = useState(new Date().getMonth() + 1);
+  const [currentYear] = useState(new Date().getFullYear());
+  const currentMonthLabel = new Date(
+    currentYear,
+    currentMonth - 1
+  ).toLocaleString('id-ID', { month: 'long' });
+
   const { summaryData, serviceBreakdown, projectBreakdownData, projects } =
     dashboardData || {};
   const isLoadingDashboard = loading.dashboard;
-  const isLoadingYearly = loading.yearlySummary;
+  const isLoadingYearly = loading.yearlyUsage;
 
   useEffect(() => {
     if (user) {
@@ -62,9 +57,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (selectedClientId) {
       fetchDashboardData();
-      fetchYearlySummaryData({ year: new Date().getFullYear() });
+      fetchYearlyUsageData({ months: 12 });
     }
-  }, [selectedClientId, fetchDashboardData, fetchYearlySummaryData]);
+  }, [selectedClientId, fetchDashboardData, fetchYearlyUsageData]);
 
   if (isAuthLoading) {
     return (
@@ -141,88 +136,43 @@ export default function DashboardPage() {
                 </TabsList>
                 <TabsContent value="monthly" className="space-y-6">
                   <div className="grid gap-6 xl:grid-cols-2">
-                    <Card className="overflow-hidden border shadow-sm">
-                      <CardHeader className="pb-2">
-                        <CardTitle>Top 5 Project</CardTitle>
-                        <CardDescription>
-                          Biaya 5 project teratas bulan ini
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="min-h-[450px]">
-                        {projectBreakdownData?.breakdown &&
-                        projectBreakdownData.breakdown.length > 0 ? (
-                          <BillingProjectBreakdown
-                            data={projectBreakdownData}
-                            showSearch={false}
-                            showAll={false}
-                          />
-                        ) : (
-                          <p className="text-sm text-muted-foreground pt-4">
-                            Tidak ada data breakdown project.
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                    <Card className="border shadow-sm">
-                      <CardHeader className="pb-2">
-                        <CardTitle>Breakdown Layanan</CardTitle>
-                        <CardDescription>Biaya per layanan GCP</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {serviceBreakdown && serviceBreakdown.length > 0 ? (
-                          <BillingServiceBreakdown data={serviceBreakdown} />
-                        ) : (
-                          <p className="text-sm text-muted-foreground pt-4">
-                            Tidak ada data breakdown layanan.
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
+                    {projectBreakdownData?.breakdown?.length > 0 ? (
+                      <BillingProjectBreakdown
+                        data={projectBreakdownData}
+                        currentMonthLabel={currentMonthLabel}
+                        selectedYear={currentYear}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground pt-4">
+                        Tidak ada data breakdown project.
+                      </p>
+                    )}
+                    {serviceBreakdown?.breakdown?.length > 0 ? (
+                      <BillingServiceBreakdown
+                        data={serviceBreakdown}
+                        currentMonthLabel={currentMonthLabel}
+                        selectedYear={currentYear}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground pt-4">
+                        Tidak ada data breakdown layanan.
+                      </p>
+                    )}
                   </div>
                 </TabsContent>
                 <TabsContent value="yearly">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Grafik Billing Tahunan</CardTitle>
-                      <CardDescription>
-                        Total biaya per bulan untuk tahun{' '}
-                        {new Date().getFullYear()}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {isLoadingYearly ? (
-                        <div className="flex h-[350px] items-center justify-center">
-                          <Loader2 className="animate-spin h-6 w-6" />
-                        </div>
-                      ) : yearlySummaryData ? (
-                        <BillingYearlyChart data={yearlySummaryData} />
-                      ) : (
-                        <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                          Tidak ada data ringkasan tahunan untuk ditampilkan.
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                  {yearlyUsageData ? (
+                    <BillingYearlyChart data={yearlyUsageData} />
+                  ) : (
+                    <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
+                      Memuat data...
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
-
-              <Card className="border shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle>Proyek GCP</CardTitle>
-                  <CardDescription>
-                    Daftar proyek GCP yang terhubung
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {projects && projects.length > 0 ? (
-                    <ProjectsList projects={projects} />
-                  ) : (
-                    <p className="text-sm text-muted-foreground pt-4">
-                      Tidak ada proyek yang terhubung dengan client ini.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              {projects && projects.length > 0 && (
+                <ProjectsList projects={projects} />
+              )}
             </>
           )}
         </>

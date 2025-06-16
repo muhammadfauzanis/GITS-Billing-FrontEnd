@@ -2,13 +2,6 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -40,9 +33,9 @@ function UsagePageContent() {
 
   const {
     fetchUsageData,
-    fetchYearlySummaryData,
+    fetchYearlyUsageData,
     usageData,
-    yearlySummaryData,
+    yearlyUsageData,
     loading,
     error,
     selectedClientId,
@@ -51,7 +44,7 @@ function UsagePageContent() {
   useEffect(() => {
     if (selectedClientId) {
       if (activeTab === 'yearly-summary') {
-        fetchYearlySummaryData({ year: selectedYear });
+        fetchYearlyUsageData({ months: 12 });
       } else {
         fetchUsageData({ month: selectedMonth, year: selectedYear });
       }
@@ -61,7 +54,7 @@ function UsagePageContent() {
     selectedYear,
     selectedClientId,
     fetchUsageData,
-    fetchYearlySummaryData,
+    fetchYearlyUsageData,
     activeTab,
   ]);
 
@@ -75,11 +68,7 @@ function UsagePageContent() {
     value: (i + 1).toString(),
     label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
   }));
-  const years = [
-    { value: '2023', label: '2023' },
-    { value: '2024', label: '2024' },
-    { value: '2025', label: '2025' },
-  ];
+  const years = [{ value: '2025', label: '2025' }];
 
   const currentMonthLabel = months.find(
     (m) => m.value === selectedMonth.toString()
@@ -162,7 +151,9 @@ function UsagePageContent() {
         <TabsList>
           <TabsTrigger value="overview">Service Overview</TabsTrigger>
           <TabsTrigger value="projects">Project Overview</TabsTrigger>
-          <TabsTrigger value="yearly-summary">Ringkasan Tahunan</TabsTrigger>
+          <TabsTrigger value="yearly-summary">
+            Year to Date Overview
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -170,29 +161,17 @@ function UsagePageContent() {
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8 text-primary" />
             </div>
+          ) : usageData?.serviceBreakdown?.breakdown?.length > 0 ? (
+            <BillingServiceBreakdown
+              data={usageData.serviceBreakdown}
+              showAll={true}
+              currentMonthLabel={currentMonthLabel}
+              selectedYear={selectedYear}
+            />
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Breakdown Layanan</CardTitle>
-                <CardDescription>
-                  Biaya per layanan GCP untuk bulan {currentMonthLabel}{' '}
-                  {selectedYear}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {usageData?.serviceBreakdown &&
-                usageData.serviceBreakdown.length > 0 ? (
-                  <BillingServiceBreakdown
-                    data={usageData.serviceBreakdown}
-                    showAll
-                  />
-                ) : (
-                  <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                    Tidak ada data tersedia.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+              Tidak ada data tersedia.
+            </div>
           )}
         </TabsContent>
 
@@ -201,38 +180,27 @@ function UsagePageContent() {
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8 text-primary" />
             </div>
+          ) : usageData?.projectBreakdown?.breakdown?.length > 0 ? (
+            <BillingProjectBreakdown
+              data={usageData.projectBreakdown}
+              showAll={true}
+              currentMonthLabel={currentMonthLabel}
+              selectedYear={selectedYear}
+            />
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Penggunaan Project</CardTitle>
-                <CardDescription>
-                  Biaya per project untuk bulan {currentMonthLabel}{' '}
-                  {selectedYear}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {usageData?.projectBreakdown ? (
-                  <BillingProjectBreakdown
-                    data={usageData.projectBreakdown}
-                    showAll
-                  />
-                ) : (
-                  <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                    Tidak ada data tersedia.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+              Tidak ada data tersedia.
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="yearly-summary" className="space-y-6 pt-4">
-          {loading.yearlySummary ? (
+          {loading.yearlyUsage ? (
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8 text-primary" />
             </div>
-          ) : yearlySummaryData ? (
-            <BillingYearlyChart data={yearlySummaryData} showAll={true} />
+          ) : yearlyUsageData ? (
+            <BillingYearlyChart data={yearlyUsageData} showAll={true} />
           ) : (
             <div className="flex h-[300px] items-center justify-center text-muted-foreground">
               Tidak ada data ringkasan tahunan untuk ditampilkan.
