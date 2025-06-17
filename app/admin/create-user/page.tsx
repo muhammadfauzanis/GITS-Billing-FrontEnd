@@ -1,8 +1,8 @@
 'use client';
 
 import type React from 'react';
-
 import { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,7 @@ export default function CreateUserPage() {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+  const [tab, setTab] = useState<'manual' | 'google'>('manual');
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -72,11 +73,11 @@ export default function CreateUserPage() {
     try {
       const userData = {
         email: formData.email,
-        password: formData.password,
         role: formData.role,
         ...(formData.role === 'client' && {
           clientId: formData.clientId,
         }),
+        ...(tab === 'manual' && { password: formData.password }),
       };
 
       await registerUser(userData);
@@ -117,151 +118,173 @@ export default function CreateUserPage() {
       </div>
 
       <div className="max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Form Registrasi Pengguna
-            </CardTitle>
-            <CardDescription>
-              Isi form di bawah untuk membuat akun pengguna baru
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {message && (
-                <Alert
-                  variant={message.type === 'error' ? 'destructive' : 'default'}
-                >
-                  {message.type === 'error' ? (
-                    <AlertCircle className="h-4 w-4" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4" />
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as 'manual' | 'google')}
+          className="space-y-4"
+        >
+          <TabsList>
+            <TabsTrigger value="manual">Email & Password</TabsTrigger>
+            <TabsTrigger value="google">Google Account</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={tab} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Form Registrasi Pengguna
+                </CardTitle>
+                <CardDescription>
+                  Isi form di bawah untuk membuat akun pengguna baru
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {message && (
+                    <Alert
+                      variant={
+                        message.type === 'error' ? 'destructive' : 'default'
+                      }
+                    >
+                      {message.type === 'error' ? (
+                        <AlertCircle className="h-4 w-4" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                      <AlertDescription>{message.text}</AlertDescription>
+                    </Alert>
                   )}
-                  <AlertDescription>{message.text}</AlertDescription>
-                </Alert>
-              )}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      handleInputChange('password', e.target.value)
-                    }
-                    minLength={6}
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role">Role *</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => handleInputChange('role', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih role pengguna" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="client">Client</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.role === 'client' && (
-                <div className="space-y-2">
-                  <Label htmlFor="clientId">Client *</Label>
-                  {isLoadingClients ? (
-                    <div className="flex items-center justify-center p-4 border rounded-md">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                      <span className="ml-2 text-sm text-gray-600">
-                        Memuat clients...
-                      </span>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="user@example.com"
+                        value={formData.email}
+                        onChange={(e) =>
+                          handleInputChange('email', e.target.value)
+                        }
+                        required
+                        disabled={isLoading}
+                      />
                     </div>
-                  ) : (
+
+                    {tab === 'manual' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="password"
+                          value={formData.password}
+                          onChange={(e) =>
+                            handleInputChange('password', e.target.value)
+                          }
+                          minLength={6}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role *</Label>
                     <Select
-                      value={formData.clientId}
+                      value={formData.role}
                       onValueChange={(value) =>
-                        handleInputChange('clientId', value)
+                        handleInputChange('role', value)
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih client" />
+                        <SelectValue placeholder="Pilih role pengguna" />
                       </SelectTrigger>
                       <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem
-                            key={client.id}
-                            value={client.id.toString()}
-                          >
-                            {client.name}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {formData.role === 'client' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="clientId">Client *</Label>
+                      {isLoadingClients ? (
+                        <div className="flex items-center justify-center p-4 border rounded-md">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                          <span className="ml-2 text-sm text-gray-600">
+                            Memuat clients...
+                          </span>
+                        </div>
+                      ) : (
+                        <Select
+                          value={formData.clientId}
+                          onValueChange={(value) =>
+                            handleInputChange('clientId', value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih client" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map((client) => (
+                              <SelectItem
+                                key={client.id}
+                                value={client.id.toString()}
+                              >
+                                {client.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
 
-              <div className="pt-4">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={
-                    isLoading ||
-                    isLoadingClients ||
-                    !formData.email ||
-                    !formData.role ||
-                    (formData.role === 'client' && !formData.clientId)
-                  }
-                >
-                  {isLoading ? 'Membuat Akun...' : 'Buat Akun'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="pt-4">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        isLoading ||
+                        isLoadingClients ||
+                        !formData.email ||
+                        !formData.role ||
+                        (formData.role === 'client' && !formData.clientId) ||
+                        (tab === 'manual' && !formData.password)
+                      }
+                    >
+                      {isLoading ? 'Membuat Akun...' : 'Buat Akun'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
 
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-sm">Informasi</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>
-              • <strong>Admin:</strong> Dapat mengakses panel admin dan
-              mengelola semua pengguna
-            </p>
-            <p>
-              • <strong>Client:</strong> Hanya dapat mengakses dashboard billing
-              untuk client yang ditentukan
-            </p>
-            <p>
-              • Password minimal 6 karakter. Jika kosong, user akan diinvite via
-              email.
-            </p>
-            <p>• Email harus unik dan belum terdaftar</p>
-          </CardContent>
-        </Card>
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-sm">Informasi</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  • <strong>Admin:</strong> Dapat mengakses panel admin dan
+                  mengelola semua pengguna
+                </p>
+                <p>
+                  • <strong>Client:</strong> Hanya dapat mengakses dashboard
+                  billing untuk client yang ditentukan
+                </p>
+                <p>
+                  • Password minimal 6 karakter. Jika kosong, user akan diinvite
+                  via email.
+                </p>
+                <p>• Email harus unik dan belum terdaftar</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

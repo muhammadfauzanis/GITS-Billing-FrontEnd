@@ -48,10 +48,9 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// ... sisa kode export fungsi API tetap sama
 export const registerUser = async (userData: {
   email: string;
-  password: string;
+  password?: string;
   role: string;
   clientId?: string;
 }) => {

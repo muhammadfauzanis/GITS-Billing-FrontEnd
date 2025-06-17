@@ -8,6 +8,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  TooltipProps,
 } from 'recharts';
 import { useMemo } from 'react';
 import {
@@ -71,33 +72,19 @@ interface TooltipPayloadItem {
   fill: string;
 }
 
-const CustomTooltip = ({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: TooltipPayloadItem[];
-  label?: string;
-}) => {
+const CustomTooltip = ({ active, payload, label }: TooltipProps<any, any>) => {
   if (active && payload && payload.length) {
-    const total = payload.reduce(
-      (sum: number, item: TooltipPayloadItem) => sum + item.value,
-      0
-    );
+    const data = payload[0].payload; // ⬅️ Akses objek lengkap bar yang sedang dihover
+    const total = data.total;
+
     const sortedPayload = payload
-      .filter((p: TooltipPayloadItem) => p.value !== 0)
-      .sort(
-        (a: TooltipPayloadItem, b: TooltipPayloadItem) =>
-          Math.abs(b.value) - Math.abs(a.value)
-      );
+      .filter((p) => p.value !== 0)
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
 
     const top5Services = sortedPayload.slice(0, 5);
     const otherServices = sortedPayload.slice(5);
-    const othersTotal = otherServices.reduce(
-      (acc: number, service: TooltipPayloadItem) => acc + service.value,
-      0
-    );
+    const othersTotal = otherServices.reduce((acc, p) => acc + p.value, 0);
+
     return (
       <div className="rounded-lg border bg-background p-3 shadow-lg min-w-[300px]">
         <p className="font-bold text-base mb-2">{label}</p>
@@ -107,7 +94,7 @@ const CustomTooltip = ({
         </div>
         <div className="w-full h-px bg-border my-2" />
         <div className="space-y-1">
-          {top5Services.map((pld: TooltipPayloadItem, index: number) => (
+          {top5Services.map((p, index) => (
             <div
               key={index}
               className="flex items-center justify-between gap-4"
@@ -115,15 +102,13 @@ const CustomTooltip = ({
               <div className="flex items-center gap-2">
                 <div
                   className="h-2.5 w-2.5 rounded-sm shrink-0"
-                  style={{ backgroundColor: pld.fill }}
+                  style={{ backgroundColor: p.fill }}
                 />
-                <span className="text-sm text-muted-foreground">
-                  {pld.name}
-                </span>
+                <span className="text-sm text-muted-foreground">{p.name}</span>
               </div>
-              <span className="text-sm font-medium">{`Rp ${pld.value.toLocaleString(
-                'id-ID'
-              )}`}</span>
+              <span className="text-sm font-medium">
+                {`Rp ${p.value.toLocaleString('id-ID')}`}
+              </span>
             </div>
           ))}
           {otherServices.length > 0 && (
@@ -134,9 +119,9 @@ const CustomTooltip = ({
                   {otherServices.length} layanan lainnya
                 </span>
               </div>
-              <span className="text-sm font-medium">{`Rp ${othersTotal.toLocaleString(
-                'id-ID'
-              )}`}</span>
+              <span className="text-sm font-medium">
+                {`Rp ${othersTotal.toLocaleString('id-ID')}`}
+              </span>
             </div>
           )}
         </div>
@@ -145,7 +130,6 @@ const CustomTooltip = ({
   }
   return null;
 };
-
 export function BillingYearlyChart({
   data,
   showAll = false,
@@ -184,16 +168,27 @@ export function BillingYearlyChart({
           month_name: month.split(' ')[0],
           month,
         };
-        let total = 0;
+
+        let visibleTotal = 0;
+        let trueTotal = 0;
+
         sortedServices.forEach((service) => {
           const cost = service.months[month] || 0;
-          monthData[service.name] = cost;
-          total += cost;
+          monthData[service.name] = cost > 0 ? cost : 0;
+          trueTotal += cost;
+          if (cost > 0) visibleTotal += cost;
         });
-        monthData.total = total;
+
+        // Kita simpan nilai total sebenarnya sebagai "trueTotal"
+        monthData['total'] = trueTotal;
+        monthData['visibleTotal'] = visibleTotal;
+
         return monthData;
       })
-      .filter((item) => typeof item.total === 'number' && item.total !== 0);
+      .filter(
+        (item) =>
+          typeof item.visibleTotal === 'number' && item.visibleTotal !== 0
+      );
 
     const sortedServicesWithTotals = sortedServices
       .map((service) => {
