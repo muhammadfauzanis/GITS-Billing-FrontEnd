@@ -11,19 +11,21 @@ export async function middleware(req: NextRequest) {
     error: sessionError,
   } = await supabase.auth.getSession();
 
+  const { pathname } = req.nextUrl;
+  const publicPaths = ['/', '/set-password', '/unregistered'];
+
   if (sessionError) {
-    console.error('Middleware Supabase session error:', sessionError);
+    console.error('Supabase session error:', sessionError);
   }
 
-  const { pathname } = req.nextUrl;
-  const publicPaths = ['/', '/set-password'];
-
+  // --- USER BELUM LOGIN DAN AKSES HALAMAN TERPROTEKSI ---
   if (!session && !publicPaths.includes(pathname)) {
     const redirectUrl = new URL('/', req.url);
     redirectUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
+  // --- USER SUDAH LOGIN ---
   if (session) {
     const { data: profile, error: profileError } = await supabase
       .from('users')
@@ -31,36 +33,49 @@ export async function middleware(req: NextRequest) {
       .eq('supabase_auth_id', session.user.id)
       .single();
 
-    if (profileError) {
+    // --- GAGAL AMBIL PROFILE ---
+    if (profileError && profileError.code !== 'PGRST116') {
       console.error('Middleware profile error:', profileError);
       await supabase.auth.signOut();
       return NextResponse.redirect(new URL('/', req.url));
     }
 
-    if (pathname !== '/set-password' && profile && !profile.is_password_set) {
+    // --- USER BELUM TERDAFTAR DI TABLE INTERNAL ---
+    if (!profile) {
+      return NextResponse.redirect(new URL('/unregistered', req.url));
+    }
+
+    // --- USER SUDAH LOGIN TAPI AKSES '/' (LOGIN) ---
+    if (pathname === '/') {
+      return NextResponse.redirect(
+        new URL(profile.role === 'admin' ? '/admin' : '/dashboard', req.url)
+      );
+    }
+
+    // --- PASSWORD BELUM DITENTUKAN, HARUS SET PASSWORD DULU ---
+    if (!profile.is_password_set && pathname !== '/set-password') {
       return NextResponse.redirect(
         new URL(`/set-password?email=${session.user.email}`, req.url)
       );
     }
 
-    if (publicPaths.includes(pathname) && profile && profile.is_password_set) {
+    // --- JANGAN ALOKASIKAN HALAMAN LOGIN /set-password /unregistered KE USER YANG SUDAH SIAP ---
+    if (publicPaths.includes(pathname) && profile.is_password_set) {
       return NextResponse.redirect(
-        new URL(profile?.role === 'admin' ? '/admin' : '/dashboard', req.url)
+        new URL(profile.role === 'admin' ? '/admin' : '/dashboard', req.url)
       );
     }
 
-    // --- PERUBAHAN DI SINI ---
-    // Izinkan admin untuk mengakses /admin dan juga /dashboard
+    // --- ROLE-BASED PROTECT ADMIN ---
     if (
-      profile?.role === 'admin' &&
+      profile.role === 'admin' &&
       !pathname.startsWith('/admin') &&
       !pathname.startsWith('/dashboard')
     ) {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
-    // --- AKHIR PERUBAHAN ---
 
-    if (profile?.role !== 'admin' && pathname.startsWith('/admin')) {
+    if (profile.role !== 'admin' && pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
   }
@@ -69,5 +84,11 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/', '/set-password'],
+  matcher: [
+    '/dashboard/:path*',
+    '/admin/:path*',
+    '/',
+    '/set-password',
+    '/unregistered',
+  ],
 };

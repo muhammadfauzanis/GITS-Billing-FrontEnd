@@ -6,6 +6,7 @@ import { AdminHeader } from '@/components/admin-header';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function AdminLayout({
   children,
@@ -16,32 +17,36 @@ export default function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/');
-    } else if (!isLoading && user && user.role !== 'admin') {
-      router.push('/dashboard');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/');
+      } else if (user.role !== 'admin') {
+        router.push('/dashboard');
+      }
     }
   }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">
+          Memverifikasi sesi admin...
+        </span>
       </div>
     );
   }
 
-  if (!user || user.role !== 'admin') {
-    return null;
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <AdminHeader />
-      <div className="flex flex-1">
-        <AdminSidebar />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+  if (user && user.role === 'admin') {
+    return (
+      <div className="flex min-h-screen flex-col bg-white">
+        <AdminHeader />
+        <div className="flex flex-1">
+          <AdminSidebar />
+          <main className="flex-1 overflow-auto p-6">{children}</main>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+  return null;
 }

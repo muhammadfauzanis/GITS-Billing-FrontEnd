@@ -1,7 +1,8 @@
 'use client';
 
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,22 +14,31 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/lib/auth';
 import Image from 'next/image';
 
 export function LoginForm() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user, isLoading } = useAuth();
+  const router = useRouter();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // 🚀 Auto-redirect jika user sudah login
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
+    }
+  }, [user, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError('');
 
     try {
@@ -37,10 +47,11 @@ export function LoginForm() {
       console.error('Login error:', err);
       setError('Login gagal. Periksa kembali email dan password Anda.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  // 🔐 Handle Google login
   const handleGoogleLogin = async () => {
     setError('');
     setIsGoogleLoading(true);
@@ -79,7 +90,7 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading || isGoogleLoading}
+                disabled={isSubmitting || isGoogleLoading}
               />
             </div>
             <div className="space-y-2">
@@ -90,15 +101,15 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isLoading || isGoogleLoading}
+                disabled={isSubmitting || isGoogleLoading}
               />
             </div>
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || isGoogleLoading}
+              disabled={isSubmitting || isGoogleLoading}
             >
-              {isLoading ? 'Memproses...' : 'Masuk'}
+              {isSubmitting ? 'Memproses...' : 'Masuk'}
             </Button>
           </form>
 
@@ -115,12 +126,12 @@ export function LoginForm() {
 
           <Button
             variant="outline"
-            className="w-full flex items-center gap-2" //
+            className="w-full flex items-center gap-2"
             onClick={handleGoogleLogin}
-            disabled={isLoading || isGoogleLoading}
+            disabled={isSubmitting || isGoogleLoading}
           >
             {isGoogleLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              <Loader2 className="animate-spin h-4 w-4" />
             ) : (
               <Image
                 src="/google-logo.png"
