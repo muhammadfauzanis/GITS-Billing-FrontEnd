@@ -23,17 +23,19 @@ before_script:
 deploy:
   stage: deploy
   script:
-    - docker build \
-      --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-      --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-      -t $IMAGE .
+    - |
+      docker build \
+        --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+        --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+        -t $IMAGE .
     - docker push $IMAGE
     - gcloud run deploy $CLOUD_RUN_SERVICE_NAME \
       --image=$IMAGE \
       --platform=managed \
-      --allow-unauthenticated \
       --region=$REGION \
+      --allow-unauthenticated \
       --port=3000
+
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: always
