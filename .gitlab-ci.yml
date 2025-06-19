@@ -1,0 +1,27 @@
+image: google/cloud-sdk:latest
+
+stages:
+  - deploy
+
+before_script:
+  - echo "$GCP_SERVICE_ACCOUNT_KEY" > gcp-key.json
+  - gcloud auth activate-service-account --key-file=gcp-key.json
+  - gcloud config set project $GCP_PROJECT_ID
+  - gcloud config set run/region $GCP_REGION
+  - gcloud auth configure-docker $CI_DEPLOY_REGION-docker.pkg.dev
+
+variables:
+  CI_DEPLOY_REGION: $GCP_REGION
+  IMAGE_NAME: $CI_DEPLOY_REGION-docker.pkg.dev/$GCP_PROJECT_ID/nextjs-repo/nextjs-image:$CI_COMMIT_SHORT_SHA
+
+deploy:
+  stage: deploy
+  script:
+    - docker build -t $IMAGE_NAME .
+    - docker push $IMAGE_NAME
+    - gcloud run deploy $CLOUD_RUN_SERVICE_NAME \
+      --image=$IMAGE_NAME \
+      --platform=managed \
+      --region=$GCP_REGION \
+      --allow-unauthenticated \
+      --port=3000
