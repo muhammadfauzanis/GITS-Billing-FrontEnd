@@ -7,7 +7,7 @@ variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ''
-  REGION: asia-southeast2
+  REGION: us-central1
   REPO_NAME: gits-billing-fe
   IMAGE: $REGION-docker.pkg.dev/$GCP_PROJECT_ID/$REPO_NAME/$CLOUD_RUN_SERVICE_NAME:$CI_COMMIT_SHORT_SHA
 
@@ -29,13 +29,13 @@ deploy:
         --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
         -t $IMAGE .
     - docker push $IMAGE
-    - gcloud run deploy $CLOUD_RUN_SERVICE_NAME \
-      --image=$IMAGE \
-      --platform=managed \
-      --region=$REGION \
-      --allow-unauthenticated \
-      --port=3000
-
+    - |
+      gcloud run deploy $CLOUD_RUN_SERVICE_NAME \
+        --image=$IMAGE \
+        --platform=managed \
+        --region=$REGION \
+        --allow-unauthenticated \
+        --port=3000
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: always
