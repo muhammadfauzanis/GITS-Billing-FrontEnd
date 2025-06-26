@@ -23,7 +23,7 @@ before_script:
 deploy:
   stage: deploy
   tags:
-    - docker-dind
+    - gits-shell
   only:
     - production
   script:
