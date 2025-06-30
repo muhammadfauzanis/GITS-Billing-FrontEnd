@@ -34,3 +34,4 @@ deploy:
         --region=$REGION \
         --allow-unauthenticated \
         --port=3000
+        --set-env-vars "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_BASE_API_URL=$NEXT_PUBLIC_BASE_API_URL"
