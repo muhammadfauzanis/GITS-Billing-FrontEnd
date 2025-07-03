@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import ChatbotPage from '@/components/chatbot';
 import { BillingOverview } from '@/components/billing-overview';
 import { ClientSelector } from '@/components/ClientSelector';
 import { useAuth } from '@/lib/auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, X } from 'lucide-react';
 import { ProjectsList } from '@/components/projects-list';
 import { BillingProjectBreakdown } from '@/components/billing-project-breakdown';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
@@ -30,6 +31,7 @@ export default function DashboardPage() {
     error,
   } = useDashboardStore();
 
+  const [chatbotOpen, setChatbotOpen] = useState(false);
   // Definisikan bulan dan tahun untuk halaman dashboard
   const [currentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear] = useState(new Date().getFullYear());
@@ -61,6 +63,7 @@ export default function DashboardPage() {
     }
   }, [selectedClientId, fetchDashboardData, fetchYearlyUsageData]);
 
+
   if (isAuthLoading) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -71,7 +74,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative min-h-screen pb-20">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -176,6 +179,35 @@ export default function DashboardPage() {
             </>
           )}
         </>
+      )}
+
+      {/* Floating Chatbot Button */}
+      <button
+        onClick={() => setChatbotOpen(true)}
+        className="fixed bottom-6 right-6 z-50 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition"
+        aria-label="Open Chatbot"
+      >
+        💬
+      </button>
+
+      {/* Chatbot Modal */}
+      {chatbotOpen && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-30 backdrop-blur-sm flex items-end md:items-center justify-center">
+          <div className="relative w-full md:max-w-3xl h-[80vh] md:h-[600px] bg-white rounded-t-2xl md:rounded-2xl shadow-lg overflow-hidden flex flex-col">
+            {/* Close Button */}
+            <button
+              onClick={() => setChatbotOpen(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+             {/* Chatbot Content scrollable */}
+              <div className="flex-1 overflow-y-auto p-4">
+            <ChatbotPage />
+              </div>
+          </div>
+        </div>
       )}
     </div>
   );
