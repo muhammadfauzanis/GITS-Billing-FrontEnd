@@ -56,7 +56,7 @@ export default function ChatbotPage() {
         }
         endpoint = '/tools/recommend_cost_reduction';
         payload = { 
-          client_name: clientName 
+          user_id: user.id,
         };
       } else if (selectedTool === 'summary') {
         endpoint = '/tools/summary_detailed';
@@ -66,7 +66,7 @@ export default function ChatbotPage() {
         };
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL;
+      const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL!;
       const res = await axios.post(`${baseUrl}${endpoint}`, payload);
       const botResult = res.data?.result;
 
