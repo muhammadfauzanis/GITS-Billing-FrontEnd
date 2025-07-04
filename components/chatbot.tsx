@@ -49,11 +49,6 @@ export default function ChatbotPage() {
           user_id: user.id 
         };
       } else if (selectedTool === 'recommend') {
-        if (!clientName.trim()) {
-          alert('Client name is required for cost recommendations.');
-          setLoading(false);
-          return;
-        }
         endpoint = '/tools/recommend_cost_reduction';
         payload = { 
           user_id: user.id,
@@ -151,16 +146,7 @@ export default function ChatbotPage() {
       onSubmit={handleSubmit}
       className="w-full max-w-2xl mx-auto px-4 py-3 bg-white border-t border-blue-200"
     >
-      {selectedTool === 'recommend' && (
-        <input
-          type="text"
-          className="mb-2 w-full p-2 border border-blue-300 rounded"
-            placeholder="Client name (e.g. Acme Corp)"
-            value={clientName}
-            onChange={e => setClientName(e.target.value)}
-            disabled={loading}
-          />
-        )}
+      
         <div className="flex gap-2">
           <input
             type="text"
