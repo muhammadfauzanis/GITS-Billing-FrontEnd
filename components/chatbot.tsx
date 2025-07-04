@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-// import { useAuth } from "@/context/auth"
 import { useAuth } from '@/lib/auth';
-// import { useRouter } from 'next/router';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 
@@ -49,11 +47,6 @@ export default function ChatbotPage() {
           user_id: user.id 
         };
       } else if (selectedTool === 'recommend') {
-        if (!clientName.trim()) {
-          alert('Client name is required for cost recommendations.');
-          setLoading(false);
-          return;
-        }
         endpoint = '/tools/recommend_cost_reduction';
         payload = { 
           user_id: user.id,
