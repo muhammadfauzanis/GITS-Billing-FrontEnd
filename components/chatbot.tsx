@@ -66,7 +66,8 @@ export default function ChatbotPage() {
         };
       }
 
-      const res = await axios.post(`https://billing-agent-506948134351.asia-southeast2.run.app${endpoint}`, payload);
+      const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL;
+      const res = await axios.post(`${baseUrl}${endpoint}`, payload);
       const botResult = res.data?.result;
 
       let botReply = '';
