@@ -1,8 +1,7 @@
-// lib/api.ts
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
 
-const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL!;
+const BASE_API_URL = `${process.env.NEXT_PUBLIC_BASE_API_URL}/api`;
 
 const axiosInstance = axios.create({
   baseURL: BASE_API_URL,
