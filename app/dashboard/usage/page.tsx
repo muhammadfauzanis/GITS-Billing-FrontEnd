@@ -42,12 +42,14 @@ function UsagePageContent() {
   } = useDashboardStore();
 
   useEffect(() => {
-    if (selectedClientId) {
-      if (activeTab === 'yearly-summary') {
-        fetchYearlyUsageData({ months: 12 });
-      } else {
-        fetchUsageData({ month: selectedMonth, year: selectedYear });
-      }
+    if (!selectedClientId) return;
+
+    const isYearly = activeTab === 'yearly-summary';
+
+    if (isYearly) {
+      fetchYearlyUsageData({ months: 12 });
+    } else {
+      fetchUsageData({ month: selectedMonth, year: selectedYear });
     }
   }, [
     selectedMonth,
