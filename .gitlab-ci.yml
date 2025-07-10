@@ -1,12 +1,6 @@
 image: google/cloud-sdk:slim
 
-services:
-  - docker:dind
-
 variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ''
   REGION: asia-southeast2
   REPO_NAME: gits-billing-fe
   IMAGE: $REGION-docker.pkg.dev/$GCP_PROJECT_ID/$REPO_NAME/$CLOUD_RUN_SERVICE_NAME:$CI_COMMIT_SHORT_SHA
@@ -23,7 +17,7 @@ before_script:
 deploy:
   stage: deploy
   tags:
-    - gits-docker
+    - gits-shell
   only:
     - production
   script:
@@ -31,6 +25,8 @@ deploy:
       docker build \
         --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
         --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+        --build-arg NEXT_PUBLIC_BASE_API_URL=$NEXT_PUBLIC_BASE_API_URL \
+        --build-arg NEXT_PUBLIC_AGENT_API_URL=$NEXT_PUBLIC_AGENT_API_URL \
         -t $IMAGE .
     - docker push $IMAGE
     - |
@@ -39,4 +35,5 @@ deploy:
         --platform=managed \
         --region=$REGION \
         --allow-unauthenticated \
-        --port=3000
+        --port=3000 \
+        --set-env-vars "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_BASE_API_URL=$NEXT_PUBLIC_BASE_API_URL, NEXT_PUBLIC_AGENT_API_URL=$NEXT_PUBLIC_AGENT_API_URL"

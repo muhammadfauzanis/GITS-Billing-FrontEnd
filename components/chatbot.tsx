@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-// import { useAuth } from "@/context/auth"
 import { useAuth } from '@/lib/auth';
-// import { useRouter } from 'next/router';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 
@@ -113,9 +111,36 @@ export default function ChatbotPage() {
         <h1 className="text-2xl font-bold text-blue-700">Billing AI Assistant</h1>
       </div>
 
-      {/* Tool Selector */}
-      <div className="flex justify-center gap-4 px-4 py-3">
-        {['summarize', 'recommend', 'summary'].map((tool) => (
+    {/* Form Input */}
+    <form
+      onSubmit={handleSubmit}
+      className="w-full max-w-2xl mx-auto px-4 py-3 bg-white border-t border-blue-200"
+    >
+      {selectedTool === 'recommend' && (
+        <input
+          type="text"
+          className="mb-2 w-full p-2 border border-blue-300 rounded"
+            placeholder="Client name (e.g. Acme Corp)"
+            value={clientName}
+            onChange={e => setClientName(e.target.value)}
+            disabled={loading}
+          />
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-1 p-2 border border-blue-300 rounded"
+            placeholder={
+              selectedTool === 'summarize' || selectedTool === 'summary'
+                ? 'Enter month (e.g. 2025-06)'
+                : selectedTool === 'recommend'
+                ? 'Describe your issue (optional)'
+                : 'Choose a tool first'
+            }
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            disabled={!selectedTool || loading}
+          />
           <button
             key={tool}
             onClick={() => setSelectedTool(tool as typeof selectedTool)}
