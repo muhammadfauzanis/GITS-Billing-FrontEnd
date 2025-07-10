@@ -43,7 +43,13 @@ export default function ChatbotPage() {
       if (!input.trim()) return;
     }
 
-    setMessages(prev => [...prev, { from: user ? 'user' : 'bot', text: input }]);
+    let userMessage = input;
+
+    if (selectedTool === 'recommend') {
+      userMessage = `Service: ${service}\nProject ID: ${projectId}`;
+    }
+
+    setMessages(prev => [...prev, { from: user ? 'user' : 'bot', text: userMessage }]);
     setLoading(true);
 
     try {
@@ -194,15 +200,15 @@ export default function ChatbotPage() {
               />
             </>
           )}
+
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
+            disabled={loading || !selectedTool}
+          >
+            Send
+          </button>
         </div>
-          
-        <button
-          type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
-          disabled={loading || !selectedTool}
-        >
-          Send
-        </button>
       </form>
     </div>
   );
