@@ -40,13 +40,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  let hasFetchedUser = false;
+
   useEffect(() => {
     const handleAuthStateChange = async (
       event: string,
       currentSession: Session | null
     ) => {
+      console.log('[Auth Event]', event);
       setSession(currentSession);
       setIsLoading(true);
+
+      // Bypass semua proses jika sudah pernah ambil user
+      if (hasFetchedUser) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Abaikan event yang bukan login
+      if (!['SIGNED_IN', 'INITIAL_SESSION'].includes(event)) {
+        setIsLoading(false);
+        return;
+      }
 
       if (currentSession) {
         const { data: profile, error } = await supabase
@@ -64,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!profile) {
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          if (event === 'SIGNED_IN') {
             router.push('/unregistered');
           }
           await supabase.auth.signOut();
@@ -106,23 +121,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             router.push(appUser.role === 'admin' ? '/admin' : '/dashboard');
           }
         }
+
+        hasFetchedUser = true;
       } else {
         setUser(null);
       }
+
       setIsLoading(false);
     };
 
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      handleAuthStateChange('INITIAL_SESSION', initialSession);
+      if (initialSession) {
+        setSession(initialSession);
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        if (event === 'TOKEN_REFRESHED') {
-          setSession(currentSession);
-          return;
-        }
-
         handleAuthStateChange(event, currentSession);
       }
     );
