@@ -13,6 +13,8 @@ import {
   setBudget as apiSetBudget,
   getProjectBreakdown,
   getYearlySummary,
+  getDailyServiceBreakdown,
+  getDailyProjectTrend, // <-- Impor fungsi baru
 } from './api';
 import type { AppUser } from './auth';
 
@@ -42,6 +44,8 @@ interface DashboardState {
     projectDetail?: string;
     yearlyUsage?: string;
     yearlySummary?: string;
+    daily?: string;
+    dailyProjectTrend?: string; // <-- Cache key baru
   };
 
   dashboardData: any | null;
@@ -50,6 +54,8 @@ interface DashboardState {
   projectDetailData: any | null;
   yearlyUsageData: any | null;
   yearlySummaryData: any | null;
+  dailyData: any | null;
+  dailyProjectTrendData: any | null; // <-- State baru
 
   loading: {
     dashboard: boolean;
@@ -58,6 +64,8 @@ interface DashboardState {
     projectDetail: boolean;
     yearlyUsage: boolean;
     yearlySummary: boolean;
+    daily: boolean;
+    dailyProjectTrend: boolean; // <-- Loading state baru
   };
 
   error: string | null;
@@ -72,6 +80,11 @@ interface DashboardState {
   fetchProjectDetailData: (filters: ProjectDetailFilters) => Promise<void>;
   fetchYearlyUsageData: (filters: { months: number }) => Promise<void>;
   fetchYearlySummaryData: (filters: { year: number }) => Promise<void>;
+  fetchDailyData: (filters: { month: number; year: number }) => Promise<void>;
+  fetchDailyProjectTrend: (filters: {
+    month: number;
+    year: number;
+  }) => Promise<void>; // <-- Aksi baru
   updateBudget: (data: {
     budget_value?: number;
     budget_threshold?: number;
@@ -91,6 +104,8 @@ export const useDashboardStore = create<DashboardState>()(
       projectDetailData: null,
       yearlyUsageData: null,
       yearlySummaryData: null,
+      dailyData: null,
+      dailyProjectTrendData: null, // <-- Inisialisasi state
       loading: {
         dashboard: false,
         usage: false,
@@ -98,6 +113,8 @@ export const useDashboardStore = create<DashboardState>()(
         projectDetail: false,
         yearlyUsage: false,
         yearlySummary: false,
+        daily: false,
+        dailyProjectTrend: false, // <-- Inisialisasi loading
       },
       error: null,
 
@@ -118,6 +135,8 @@ export const useDashboardStore = create<DashboardState>()(
           projectDetailData: null,
           yearlyUsageData: null,
           yearlySummaryData: null,
+          dailyData: null,
+          dailyProjectTrendData: null, // <-- Reset saat client berubah
           cacheKeys: {},
           error: null,
         });
@@ -320,6 +339,66 @@ export const useDashboardStore = create<DashboardState>()(
         } finally {
           set((state) => ({
             loading: { ...state.loading, yearlyUsage: false },
+          }));
+        }
+      },
+
+      fetchDailyData: async (filters) => {
+        const { selectedClientId, cacheKeys } = get();
+        if (!selectedClientId) return;
+
+        const cacheKey = `daily-${selectedClientId}-${filters.month}-${filters.year}`;
+        if (cacheKeys.daily === cacheKey) return;
+
+        set((state) => ({
+          loading: { ...state.loading, daily: true },
+          error: null,
+        }));
+        try {
+          const data = await getDailyServiceBreakdown(
+            filters.month,
+            filters.year,
+            selectedClientId
+          );
+          set({
+            dailyData: data,
+            cacheKeys: { ...get().cacheKeys, daily: cacheKey },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat data harian.' });
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, daily: false },
+          }));
+        }
+      },
+
+      fetchDailyProjectTrend: async (filters) => {
+        const { selectedClientId, cacheKeys } = get();
+        if (!selectedClientId) return;
+
+        const cacheKey = `daily-project-trend-${selectedClientId}-${filters.month}-${filters.year}`;
+        if (cacheKeys.dailyProjectTrend === cacheKey) return;
+
+        set((state) => ({
+          loading: { ...state.loading, dailyProjectTrend: true },
+          error: null,
+        }));
+        try {
+          const data = await getDailyProjectTrend(
+            filters.month,
+            filters.year,
+            selectedClientId
+          );
+          set({
+            dailyProjectTrendData: data,
+            cacheKeys: { ...get().cacheKeys, dailyProjectTrend: cacheKey },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat tren proyek harian.' });
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, dailyProjectTrend: false },
           }));
         }
       },
