@@ -33,14 +33,13 @@ import {
   ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
 
-// --- TYPE DEFINITIONS ---
 interface ProjectTrend {
   project: string;
   daily_costs: { [date: string]: number };
 }
 
 interface MonthlyProject {
-  service: string; // project name
+  service: string;
   value: string;
   rawValue: number;
 }
@@ -60,7 +59,6 @@ interface DailyProjectChartProps {
   showAll?: boolean;
 }
 
-// --- STYLING & FORMATTING ---
 const COLORS = [
   '#4285F4',
   '#DB4437',
@@ -93,7 +91,6 @@ const formatDateForTooltip = (dateStr: string): string => {
   });
 };
 
-// --- CUSTOM TOOLTIP COMPONENT ---
 const CustomTooltip = ({
   active,
   payload,
@@ -299,6 +296,7 @@ export function BillingDailyProjectBreakdown({
                       ? [4, 4, 0, 0]
                       : [0, 0, 0, 0]
                   }
+                  isAnimationActive={false}
                 />
               ))}
               <Bar
@@ -306,6 +304,7 @@ export function BillingDailyProjectBreakdown({
                 stackId="a"
                 fill={PLACEHOLDER_COLOR}
                 radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>

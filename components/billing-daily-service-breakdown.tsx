@@ -219,7 +219,6 @@ export function BillingDailyServiceBreakdown({
         colorMap.set(service.service, COLORS[index % COLORS.length]);
       });
 
-      // REVISI 1: Urutan render diurutkan dari terkecil ke terbesar agar bar terbesar di atas
       const servicesToRender = [...sortedMonthlyServices]
         .map((s) => s.service)
         .reverse();
@@ -231,7 +230,6 @@ export function BillingDailyServiceBreakdown({
           name: day.date.substring(8, 10),
           fullDate: day.date,
           isPlaceholder: isPlaceholder,
-          // Beri nilai minimal pada placeholder agar bar abu-abu muncul
           placeholder: isPlaceholder ? 1 : 0,
         };
 
@@ -301,7 +299,6 @@ export function BillingDailyServiceBreakdown({
                 content={<CustomTooltip serviceColorMap={serviceColorMap} />}
                 cursor={{ fill: 'hsl(var(--muted))' }}
               />
-              {/* Bar untuk data aktual */}
               {renderingServices.map((serviceName, index) => (
                 <Bar
                   key={serviceName}
@@ -313,14 +310,15 @@ export function BillingDailyServiceBreakdown({
                       ? [4, 4, 0, 0]
                       : [0, 0, 0, 0]
                   }
+                  isAnimationActive={false}
                 />
               ))}
-              {/* Bar untuk placeholder tanggal mendatang */}
               <Bar
                 dataKey="placeholder"
                 stackId="a"
                 fill={PLACEHOLDER_COLOR}
                 radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>
