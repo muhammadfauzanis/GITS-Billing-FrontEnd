@@ -13,7 +13,11 @@ import {
   setBudget as apiSetBudget,
   getProjectBreakdown,
   getYearlySummary,
-} from './api';
+  getDailyServiceBreakdown,
+  getDailyProjectTrend,
+  getDailySkuTrend,
+  getSkuBreakdown,
+} from './api/index';
 import type { AppUser } from './auth';
 
 interface Client {
@@ -42,6 +46,10 @@ interface DashboardState {
     projectDetail?: string;
     yearlyUsage?: string;
     yearlySummary?: string;
+    daily?: string;
+    dailyProjectTrend?: string;
+    dailySkuTrend?: string;
+    dailySkuBreakdown?: string;
   };
 
   dashboardData: any | null;
@@ -50,6 +58,10 @@ interface DashboardState {
   projectDetailData: any | null;
   yearlyUsageData: any | null;
   yearlySummaryData: any | null;
+  dailyData: any | null;
+  dailyProjectTrendData: any | null;
+  dailySkuTrendData: any | null;
+  dailySkuBreakdownData: any | null;
 
   loading: {
     dashboard: boolean;
@@ -58,6 +70,10 @@ interface DashboardState {
     projectDetail: boolean;
     yearlyUsage: boolean;
     yearlySummary: boolean;
+    daily: boolean;
+    dailyProjectTrend: boolean;
+    dailySkuTrend: boolean;
+    dailySkuBreakdown: boolean;
   };
 
   error: string | null;
@@ -72,6 +88,19 @@ interface DashboardState {
   fetchProjectDetailData: (filters: ProjectDetailFilters) => Promise<void>;
   fetchYearlyUsageData: (filters: { months: number }) => Promise<void>;
   fetchYearlySummaryData: (filters: { year: number }) => Promise<void>;
+  fetchDailyData: (filters: { month: number; year: number }) => Promise<void>;
+  fetchDailyProjectTrend: (filters: {
+    month: number;
+    year: number;
+  }) => Promise<void>;
+  fetchDailySkuTrend: (filters: {
+    month: number;
+    year: number;
+  }) => Promise<void>;
+  fetchDailySkuBreakdown: (filters: {
+    month: number;
+    year: number;
+  }) => Promise<void>;
   updateBudget: (data: {
     budget_value?: number;
     budget_threshold?: number;
@@ -91,6 +120,10 @@ export const useDashboardStore = create<DashboardState>()(
       projectDetailData: null,
       yearlyUsageData: null,
       yearlySummaryData: null,
+      dailyData: null,
+      dailyProjectTrendData: null,
+      dailySkuTrendData: null,
+      dailySkuBreakdownData: null,
       loading: {
         dashboard: false,
         usage: false,
@@ -98,6 +131,10 @@ export const useDashboardStore = create<DashboardState>()(
         projectDetail: false,
         yearlyUsage: false,
         yearlySummary: false,
+        daily: false,
+        dailyProjectTrend: false,
+        dailySkuTrend: false,
+        dailySkuBreakdown: false,
       },
       error: null,
 
@@ -118,6 +155,10 @@ export const useDashboardStore = create<DashboardState>()(
           projectDetailData: null,
           yearlyUsageData: null,
           yearlySummaryData: null,
+          dailyData: null,
+          dailyProjectTrendData: null,
+          dailySkuTrendData: null,
+          dailySkuBreakdownData: null,
           cacheKeys: {},
           error: null,
         });
@@ -320,6 +361,126 @@ export const useDashboardStore = create<DashboardState>()(
         } finally {
           set((state) => ({
             loading: { ...state.loading, yearlyUsage: false },
+          }));
+        }
+      },
+
+      fetchDailyData: async (filters) => {
+        const { selectedClientId, cacheKeys } = get();
+        if (!selectedClientId) return;
+
+        const cacheKey = `daily-${selectedClientId}-${filters.month}-${filters.year}`;
+        if (cacheKeys.daily === cacheKey) return;
+
+        set((state) => ({
+          loading: { ...state.loading, daily: true },
+          error: null,
+        }));
+        try {
+          const data = await getDailyServiceBreakdown(
+            filters.month,
+            filters.year,
+            selectedClientId
+          );
+          set({
+            dailyData: data,
+            cacheKeys: { ...get().cacheKeys, daily: cacheKey },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat data harian.' });
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, daily: false },
+          }));
+        }
+      },
+
+      fetchDailyProjectTrend: async (filters) => {
+        const { selectedClientId, cacheKeys } = get();
+        if (!selectedClientId) return;
+
+        const cacheKey = `daily-project-trend-${selectedClientId}-${filters.month}-${filters.year}`;
+        if (cacheKeys.dailyProjectTrend === cacheKey) return;
+
+        set((state) => ({
+          loading: { ...state.loading, dailyProjectTrend: true },
+          error: null,
+        }));
+        try {
+          const data = await getDailyProjectTrend(
+            filters.month,
+            filters.year,
+            selectedClientId
+          );
+          set({
+            dailyProjectTrendData: data,
+            cacheKeys: { ...get().cacheKeys, dailyProjectTrend: cacheKey },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat tren proyek harian.' });
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, dailyProjectTrend: false },
+          }));
+        }
+      },
+
+      fetchDailySkuTrend: async (filters) => {
+        const { selectedClientId, cacheKeys } = get();
+        if (!selectedClientId) return;
+
+        const cacheKey = `daily-sku-trend-${selectedClientId}-${filters.month}-${filters.year}`;
+        if (cacheKeys.dailySkuTrend === cacheKey) return;
+
+        set((state) => ({
+          loading: { ...state.loading, dailySkuTrend: true },
+          error: null,
+        }));
+        try {
+          const data = await getDailySkuTrend(
+            filters.month,
+            filters.year,
+            selectedClientId
+          );
+          set({
+            dailySkuTrendData: data,
+            cacheKeys: { ...get().cacheKeys, dailySkuTrend: cacheKey },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat tren SKU harian.' });
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, dailySkuTrend: false },
+          }));
+        }
+      },
+
+      fetchDailySkuBreakdown: async (filters) => {
+        const { selectedClientId, cacheKeys } = get();
+        if (!selectedClientId) return;
+
+        const cacheKey = `daily-sku-breakdown-${selectedClientId}-${filters.month}-${filters.year}`;
+        if (cacheKeys.dailySkuBreakdown === cacheKey) return;
+
+        set((state) => ({
+          loading: { ...state.loading, dailySkuBreakdown: true },
+          error: null,
+        }));
+        try {
+          const data = await getSkuBreakdown(
+            filters.month,
+            filters.year,
+            selectedClientId
+          );
+          set({
+            dailySkuBreakdownData: data,
+            cacheKeys: { ...get().cacheKeys, dailySkuBreakdown: cacheKey },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat rincian SKU.' });
+        } finally {
+          set((state) => ({
+            loading: { ...state.loading, dailySkuBreakdown: false },
           }));
         }
       },

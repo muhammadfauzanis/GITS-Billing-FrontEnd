@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, UserPlus } from 'lucide-react';
-import { registerUser, getClients } from '@/lib/api';
+import { registerUser, getClients } from '@/lib/api/index';
 
 interface Client {
   id: number;

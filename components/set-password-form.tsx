@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { updateUserPasswordStatus } from '@/lib/api'; // <-- Import fungsi baru
+import { updateUserPasswordStatus } from '@/lib/api/index'; // <-- Import fungsi baru
 
 export function SetPasswordForm() {
   const router = useRouter();

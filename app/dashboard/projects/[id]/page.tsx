@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getProjectBreakdown } from '@/lib/api';
+import { getProjectBreakdown } from '@/lib/api/index';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
