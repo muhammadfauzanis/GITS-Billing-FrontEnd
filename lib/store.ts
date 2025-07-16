@@ -19,7 +19,9 @@ import {
   getSkuBreakdown,
 } from './api/index';
 import type { AppUser } from './auth';
+import type { DailyFilterParams } from './api/billingDaily';
 
+// Interface ini mendefinisikan tipe untuk satu client
 interface Client {
   id: string;
   name: string;
@@ -38,20 +40,10 @@ interface DashboardState {
   clients: Client[];
   selectedClientId?: string;
   clientName: string;
-
-  cacheKeys: {
-    dashboard?: string;
-    usage?: string;
-    settings?: string;
-    projectDetail?: string;
-    yearlyUsage?: string;
-    yearlySummary?: string;
-    daily?: string;
-    dailyProjectTrend?: string;
-    dailySkuTrend?: string;
-    dailySkuBreakdown?: string;
-  };
-
+  dailyFilters: DailyFilterParams;
+  monthlyFilters: UsageFilters;
+  setDailyFilters: (filters: DailyFilterParams) => void;
+  setMonthlyFilters: (filters: UsageFilters) => void;
   dashboardData: any | null;
   usageData: any | null;
   settingsData: any | null;
@@ -62,7 +54,6 @@ interface DashboardState {
   dailyProjectTrendData: any | null;
   dailySkuTrendData: any | null;
   dailySkuBreakdownData: any | null;
-
   loading: {
     dashboard: boolean;
     usage: boolean;
@@ -75,45 +66,45 @@ interface DashboardState {
     dailySkuTrend: boolean;
     dailySkuBreakdown: boolean;
   };
-
   error: string | null;
-
   initializeDashboard: (user: AppUser) => void;
-  setClients: (clients: Client[]) => void;
+  setClients: (clients: Client[]) => void; // Tipe sudah benar di interface
   handleClientChange: (clientId: string) => void;
-
   fetchDashboardData: () => Promise<void>;
-  fetchUsageData: (filters: UsageFilters) => Promise<void>;
+  fetchUsageData: (filters?: UsageFilters) => Promise<void>;
   fetchSettingsData: () => Promise<void>;
   fetchProjectDetailData: (filters: ProjectDetailFilters) => Promise<void>;
   fetchYearlyUsageData: (filters: { months: number }) => Promise<void>;
   fetchYearlySummaryData: (filters: { year: number }) => Promise<void>;
-  fetchDailyData: (filters: { month: number; year: number }) => Promise<void>;
-  fetchDailyProjectTrend: (filters: {
-    month: number;
-    year: number;
-  }) => Promise<void>;
-  fetchDailySkuTrend: (filters: {
-    month: number;
-    year: number;
-  }) => Promise<void>;
-  fetchDailySkuBreakdown: (filters: {
-    month: number;
-    year: number;
-  }) => Promise<void>;
+  fetchDailyData: (
+    filters?: Omit<DailyFilterParams, 'clientId'>
+  ) => Promise<void>;
+  fetchDailyProjectTrend: (
+    filters?: Omit<DailyFilterParams, 'clientId'>
+  ) => Promise<void>;
+  fetchDailySkuTrend: (
+    filters?: Omit<DailyFilterParams, 'clientId'>
+  ) => Promise<void>;
+  fetchDailySkuBreakdown: (
+    filters?: Omit<DailyFilterParams, 'clientId'>
+  ) => Promise<void>;
   updateBudget: (data: {
     budget_value?: number;
     budget_threshold?: number;
   }) => Promise<void>;
 }
 
+const now = new Date();
+
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
+      // --- INITIAL STATE ---
       clients: [],
       selectedClientId: undefined,
       clientName: '',
-      cacheKeys: {},
+      dailyFilters: { month: now.getMonth() + 1, year: now.getFullYear() },
+      monthlyFilters: { month: now.getMonth() + 1, year: now.getFullYear() },
       dashboardData: null,
       usageData: null,
       settingsData: null,
@@ -138,17 +129,29 @@ export const useDashboardStore = create<DashboardState>()(
       },
       error: null,
 
+      // --- ACTIONS ---
+
       initializeDashboard: (user) => {
         if (user.role !== 'admin' && user.clientId) {
           set({ selectedClientId: user.clientId });
         }
       },
 
-      setClients: (clients) => set({ clients }),
+      // FIX: Tambahkan tipe Client[] pada parameter 'clients'
+      setClients: (clients: Client[]) => set({ clients }),
+
+      setDailyFilters: (filters) => set({ dailyFilters: filters }),
+      setMonthlyFilters: (filters) => set({ monthlyFilters: filters }),
 
       handleClientChange: (clientId: string) => {
+        const defaultFilters = {
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        };
         set({
           selectedClientId: clientId,
+          dailyFilters: defaultFilters,
+          monthlyFilters: defaultFilters,
           dashboardData: null,
           usageData: null,
           settingsData: null,
@@ -159,35 +162,34 @@ export const useDashboardStore = create<DashboardState>()(
           dailyProjectTrendData: null,
           dailySkuTrendData: null,
           dailySkuBreakdownData: null,
-          cacheKeys: {},
           error: null,
         });
       },
 
       fetchDashboardData: async () => {
-        const { selectedClientId, cacheKeys } = get();
+        const { selectedClientId } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `dashboard-${selectedClientId}`;
-        if (cacheKeys.dashboard === cacheKey) return;
 
         set((state) => ({
           loading: { ...state.loading, dashboard: true },
           error: null,
         }));
         try {
+          const currentMonth = now.getMonth() + 1;
+          const currentYear = now.getFullYear();
+
           const [summary, services, projectsRes, projectBreakdown, name] =
             await Promise.all([
               getBillingSummary(selectedClientId),
               getOverallServiceBreakdown(
-                new Date().getMonth() + 1,
-                new Date().getFullYear(),
+                currentMonth,
+                currentYear,
                 selectedClientId
               ),
               getClientProjects(selectedClientId),
               getAllProjectBreakdown(
-                new Date().getMonth() + 1,
-                new Date().getFullYear(),
+                currentMonth,
+                currentYear,
                 selectedClientId
               ),
               getClientName(selectedClientId),
@@ -200,24 +202,18 @@ export const useDashboardStore = create<DashboardState>()(
               projectBreakdownData: projectBreakdown,
             },
             clientName: name?.name || '',
-            cacheKeys: { ...get().cacheKeys, dashboard: cacheKey },
           });
         } catch (err: any) {
           set({ error: err.message || 'Gagal memuat data dashboard.' });
         } finally {
-          set((state) => ({
-            loading: { ...state.loading, dashboard: false },
-          }));
+          set((state) => ({ loading: { ...state.loading, dashboard: false } }));
         }
       },
 
       fetchUsageData: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
+        const { selectedClientId, monthlyFilters } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `usage-${selectedClientId}-${filters.month}-${filters.year}`;
-        if (cacheKeys.usage === cacheKey) return;
-
+        const finalFilters = filters || monthlyFilters;
         set((state) => ({
           loading: { ...state.loading, usage: true },
           error: null,
@@ -225,13 +221,13 @@ export const useDashboardStore = create<DashboardState>()(
         try {
           const [services, projects] = await Promise.all([
             getOverallServiceBreakdown(
-              filters.month,
-              filters.year,
+              finalFilters.month,
+              finalFilters.year,
               selectedClientId
             ),
             getAllProjectBreakdown(
-              filters.month,
-              filters.year,
+              finalFilters.month,
+              finalFilters.year,
               selectedClientId
             ),
           ]);
@@ -240,106 +236,109 @@ export const useDashboardStore = create<DashboardState>()(
               serviceBreakdown: services,
               projectBreakdown: projects,
             },
-            cacheKeys: { ...get().cacheKeys, usage: cacheKey },
           });
         } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat data penggunaan.' });
+          set({
+            error: err.message || 'Gagal memuat data penggunaan bulanan.',
+          });
         } finally {
           set((state) => ({ loading: { ...state.loading, usage: false } }));
         }
       },
 
-      fetchYearlySummaryData: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
+      fetchDailyData: async (filters) => {
+        const { selectedClientId, dailyFilters } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `yearly-summary-${selectedClientId}-${filters.year}`;
-        if (cacheKeys.yearlySummary === cacheKey) return;
-
+        const finalFilters = filters || dailyFilters;
         set((state) => ({
-          loading: { ...state.loading, yearlySummary: true },
+          loading: { ...state.loading, daily: true },
           error: null,
         }));
         try {
-          const data = await getYearlySummary(filters.year, selectedClientId);
-          set({
-            yearlySummaryData: data,
-            cacheKeys: { ...get().cacheKeys, yearlySummary: cacheKey },
+          const data = await getDailyServiceBreakdown({
+            ...finalFilters,
+            clientId: selectedClientId,
           });
+          set({ dailyData: data });
         } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat ringkasan tahunan.' });
+          set({ error: err.message || 'Gagal memuat data harian.' });
+        } finally {
+          set((state) => ({ loading: { ...state.loading, daily: false } }));
+        }
+      },
+
+      fetchDailyProjectTrend: async (filters) => {
+        const { selectedClientId, dailyFilters } = get();
+        if (!selectedClientId) return;
+        const finalFilters = filters || dailyFilters;
+        set((state) => ({
+          loading: { ...state.loading, dailyProjectTrend: true },
+          error: null,
+        }));
+        try {
+          const data = await getDailyProjectTrend({
+            ...finalFilters,
+            clientId: selectedClientId,
+          });
+          set({ dailyProjectTrendData: data });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat tren proyek harian.' });
         } finally {
           set((state) => ({
-            loading: { ...state.loading, yearlySummary: false },
+            loading: { ...state.loading, dailyProjectTrend: false },
           }));
         }
       },
 
-      fetchSettingsData: async () => {
-        const { selectedClientId, cacheKeys } = get();
+      fetchDailySkuTrend: async (filters) => {
+        const { selectedClientId, dailyFilters } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `settings-${selectedClientId}`;
-        if (cacheKeys.settings === cacheKey) return;
-
+        const finalFilters = filters || dailyFilters;
         set((state) => ({
-          loading: { ...state.loading, settings: true },
+          loading: { ...state.loading, dailySkuTrend: true },
           error: null,
         }));
         try {
-          const budget = await getBudget(selectedClientId);
-          set({
-            settingsData: {
-              budgetValue: budget.budgetValue,
-              budgetThreshold: budget.budgetThreshold,
-            },
-            cacheKeys: { ...get().cacheKeys, settings: cacheKey },
+          const data = await getDailySkuTrend({
+            ...finalFilters,
+            clientId: selectedClientId,
           });
+          set({ dailySkuTrendData: data });
         } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat data pengaturan.' });
+          set({ error: err.message || 'Gagal memuat tren SKU harian.' });
         } finally {
-          set((state) => ({ loading: { ...state.loading, settings: false } }));
+          set((state) => ({
+            loading: { ...state.loading, dailySkuTrend: false },
+          }));
         }
       },
 
-      fetchProjectDetailData: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
+      fetchDailySkuBreakdown: async (filters) => {
+        const { selectedClientId, dailyFilters } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `project-${filters.projectId}-${selectedClientId}-${filters.month}-${filters.year}`;
-        if (cacheKeys.projectDetail === cacheKey) return;
-
+        const finalFilters = filters || dailyFilters;
         set((state) => ({
-          loading: { ...state.loading, projectDetail: true },
+          loading: { ...state.loading, dailySkuBreakdown: true },
           error: null,
         }));
         try {
-          const breakdown = await getProjectBreakdown(
-            filters.projectId,
-            filters.month,
-            filters.year,
-            selectedClientId
-          );
-          set({
-            projectDetailData: breakdown,
-            cacheKeys: { ...get().cacheKeys, projectDetail: cacheKey },
+          const data = await getSkuBreakdown({
+            ...finalFilters,
+            clientId: selectedClientId,
           });
+          set({ dailySkuBreakdownData: data });
         } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat detail proyek.' });
+          set({ error: err.message || 'Gagal memuat rincian SKU.' });
         } finally {
           set((state) => ({
-            loading: { ...state.loading, projectDetail: false },
+            loading: { ...state.loading, dailySkuBreakdown: false },
           }));
         }
       },
 
       fetchYearlyUsageData: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
+        const { selectedClientId } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `yearly-usage-${selectedClientId}-${filters.months}`;
-        if (cacheKeys.yearlyUsage === cacheKey) return;
-
         set((state) => ({
           loading: { ...state.loading, yearlyUsage: true },
           error: null,
@@ -350,10 +349,7 @@ export const useDashboardStore = create<DashboardState>()(
             filters.months,
             selectedClientId
           );
-          set({
-            yearlyUsageData: data,
-            cacheKeys: { ...get().cacheKeys, yearlyUsage: cacheKey },
-          });
+          set({ yearlyUsageData: data });
         } catch (err: any) {
           set({
             error: err.message || 'Gagal memuat data penggunaan tahunan.',
@@ -365,122 +361,67 @@ export const useDashboardStore = create<DashboardState>()(
         }
       },
 
-      fetchDailyData: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
+      fetchSettingsData: async () => {
+        const { selectedClientId } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `daily-${selectedClientId}-${filters.month}-${filters.year}`;
-        if (cacheKeys.daily === cacheKey) return;
-
         set((state) => ({
-          loading: { ...state.loading, daily: true },
+          loading: { ...state.loading, settings: true },
           error: null,
         }));
         try {
-          const data = await getDailyServiceBreakdown(
+          const budget = await getBudget(selectedClientId);
+          set({
+            settingsData: {
+              budgetValue: budget.budgetValue,
+              budgetThreshold: budget.budgetThreshold,
+            },
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Gagal memuat data pengaturan.' });
+        } finally {
+          set((state) => ({ loading: { ...state.loading, settings: false } }));
+        }
+      },
+
+      fetchProjectDetailData: async (filters: ProjectDetailFilters) => {
+        const { selectedClientId } = get();
+        if (!selectedClientId) return;
+        set((state) => ({
+          loading: { ...state.loading, projectDetail: true },
+          error: null,
+        }));
+        try {
+          const breakdown = await getProjectBreakdown(
+            filters.projectId,
             filters.month,
             filters.year,
             selectedClientId
           );
-          set({
-            dailyData: data,
-            cacheKeys: { ...get().cacheKeys, daily: cacheKey },
-          });
+          set({ projectDetailData: breakdown });
         } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat data harian.' });
+          set({ error: err.message || 'Gagal memuat detail proyek.' });
         } finally {
           set((state) => ({
-            loading: { ...state.loading, daily: false },
+            loading: { ...state.loading, projectDetail: false },
           }));
         }
       },
 
-      fetchDailyProjectTrend: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
+      fetchYearlySummaryData: async (filters: { year: number }) => {
+        const { selectedClientId } = get();
         if (!selectedClientId) return;
-
-        const cacheKey = `daily-project-trend-${selectedClientId}-${filters.month}-${filters.year}`;
-        if (cacheKeys.dailyProjectTrend === cacheKey) return;
-
         set((state) => ({
-          loading: { ...state.loading, dailyProjectTrend: true },
+          loading: { ...state.loading, yearlySummary: true },
           error: null,
         }));
         try {
-          const data = await getDailyProjectTrend(
-            filters.month,
-            filters.year,
-            selectedClientId
-          );
-          set({
-            dailyProjectTrendData: data,
-            cacheKeys: { ...get().cacheKeys, dailyProjectTrend: cacheKey },
-          });
+          const data = await getYearlySummary(filters.year, selectedClientId);
+          set({ yearlySummaryData: data });
         } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat tren proyek harian.' });
+          set({ error: err.message || 'Gagal memuat ringkasan tahunan.' });
         } finally {
           set((state) => ({
-            loading: { ...state.loading, dailyProjectTrend: false },
-          }));
-        }
-      },
-
-      fetchDailySkuTrend: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
-        if (!selectedClientId) return;
-
-        const cacheKey = `daily-sku-trend-${selectedClientId}-${filters.month}-${filters.year}`;
-        if (cacheKeys.dailySkuTrend === cacheKey) return;
-
-        set((state) => ({
-          loading: { ...state.loading, dailySkuTrend: true },
-          error: null,
-        }));
-        try {
-          const data = await getDailySkuTrend(
-            filters.month,
-            filters.year,
-            selectedClientId
-          );
-          set({
-            dailySkuTrendData: data,
-            cacheKeys: { ...get().cacheKeys, dailySkuTrend: cacheKey },
-          });
-        } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat tren SKU harian.' });
-        } finally {
-          set((state) => ({
-            loading: { ...state.loading, dailySkuTrend: false },
-          }));
-        }
-      },
-
-      fetchDailySkuBreakdown: async (filters) => {
-        const { selectedClientId, cacheKeys } = get();
-        if (!selectedClientId) return;
-
-        const cacheKey = `daily-sku-breakdown-${selectedClientId}-${filters.month}-${filters.year}`;
-        if (cacheKeys.dailySkuBreakdown === cacheKey) return;
-
-        set((state) => ({
-          loading: { ...state.loading, dailySkuBreakdown: true },
-          error: null,
-        }));
-        try {
-          const data = await getSkuBreakdown(
-            filters.month,
-            filters.year,
-            selectedClientId
-          );
-          set({
-            dailySkuBreakdownData: data,
-            cacheKeys: { ...get().cacheKeys, dailySkuBreakdown: cacheKey },
-          });
-        } catch (err: any) {
-          set({ error: err.message || 'Gagal memuat rincian SKU.' });
-        } finally {
-          set((state) => ({
-            loading: { ...state.loading, dailySkuBreakdown: false },
+            loading: { ...state.loading, yearlySummary: false },
           }));
         }
       },
@@ -488,12 +429,9 @@ export const useDashboardStore = create<DashboardState>()(
       updateBudget: async (data) => {
         const { selectedClientId } = get();
         if (!selectedClientId) return;
-
         try {
           await apiSetBudget(data, selectedClientId);
-          set((state) => ({
-            cacheKeys: { ...state.cacheKeys, settings: undefined },
-          }));
+          get().fetchSettingsData();
         } catch (err: any) {
           set({ error: err.message || 'Gagal memperbarui budget.' });
         }

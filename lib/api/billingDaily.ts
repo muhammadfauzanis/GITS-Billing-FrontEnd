@@ -1,13 +1,15 @@
 import { axiosInstance } from './index';
 
-export const getDailyServiceBreakdown = async (
-  month: number,
-  year: number,
-  clientId?: string
-) => {
+export interface DailyFilterParams {
+  month?: number;
+  year?: number;
+  start_date?: string;
+  end_date?: string;
+  clientId?: string;
+}
+
+export const getDailyServiceBreakdown = async (params: DailyFilterParams) => {
   try {
-    const params: any = { month, year };
-    if (clientId) params.clientId = clientId;
     const response = await axiosInstance.get(
       '/billing/daily/service-breakdown',
       { params }
@@ -23,14 +25,8 @@ export const getDailyServiceBreakdown = async (
   }
 };
 
-export const getDailyProjectTrend = async (
-  month: number,
-  year: number,
-  clientId?: string
-) => {
+export const getDailyProjectTrend = async (params: DailyFilterParams) => {
   try {
-    const params: any = { month, year };
-    if (clientId) params.clientId = clientId;
     const response = await axiosInstance.get(
       '/billing/daily/project-breakdown',
       { params }

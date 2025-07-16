@@ -1,13 +1,8 @@
 import { axiosInstance } from './index';
+import type { DailyFilterParams } from './billingDaily'; // Impor tipe filter
 
-export const getDailySkuTrend = async (
-  month: number,
-  year: number,
-  clientId?: string
-) => {
+export const getDailySkuTrend = async (params: DailyFilterParams) => {
   try {
-    const params: any = { month, year };
-    if (clientId) params.clientId = clientId;
     const response = await axiosInstance.get('/billing/sku/trend', { params });
     return response.data;
   } catch (error: any) {
@@ -20,16 +15,8 @@ export const getDailySkuTrend = async (
   }
 };
 
-export const getSkuBreakdown = async (
-  month: number,
-  year: number,
-  clientId?: string
-) => {
+export const getSkuBreakdown = async (params: DailyFilterParams) => {
   try {
-    const params: any = { month, year };
-    if (clientId) {
-      params.clientId = clientId;
-    }
     const response = await axiosInstance.get('/billing/sku/breakdown', {
       params,
     });
