@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -26,29 +26,22 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import {
   NameType,
   ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
 
-// --- TYPE DEFINITIONS ---
 interface DailyService {
   service: string;
   cost: number;
-  isForecast: boolean;
 }
 
 interface DailyBreakdown {
   date: string;
   services: DailyService[];
-  total: number;
-}
-
-interface MonthlyService {
-  service: string;
-  value: string;
-  rawValue: number;
 }
 
 interface DailyChartData {
@@ -57,11 +50,7 @@ interface DailyChartData {
 }
 
 interface MonthlyBreakdownData {
-  breakdown: MonthlyService[];
-  total: {
-    value: string;
-    rawValue: number;
-  };
+  breakdown: Array<{ service: string; rawValue: number; value: string }>;
 }
 
 interface DailyBillingChartProps {
@@ -70,7 +59,6 @@ interface DailyBillingChartProps {
   showAll?: boolean;
 }
 
-// --- STYLING & FORMATTING ---
 const COLORS = [
   '#4285F4',
   '#DB4437',
@@ -84,12 +72,8 @@ const COLORS = [
   '#8D6E63',
   '#6b7280',
   '#ec4899',
-  '#d946ef',
-  '#f97316',
-  '#14b8a6',
-  '#f43f5e',
 ];
-const PLACEHOLDER_COLOR = '#f3f4f6'; // Light gray for future dates
+const PLACEHOLDER_COLOR = '#f3f4f6';
 
 const formatYAxis = (value: number): string => {
   if (value >= 1_000_000) return `Rp${(value / 1_000_000).toFixed(0)}M`;
@@ -107,11 +91,9 @@ const formatDateForTooltip = (dateStr: string): string => {
   });
 };
 
-// --- CUSTOM TOOLTIP COMPONENT ---
 const CustomTooltip = ({
   active,
   payload,
-  label,
   serviceColorMap,
 }: TooltipProps<ValueType, NameType> & {
   serviceColorMap: Map<string, string>;
@@ -127,12 +109,10 @@ const CustomTooltip = ({
       0
     );
     const fullDate = payload[0].payload.fullDate;
-
     const top5Services = payload
       .filter((p) => typeof p.value === 'number' && p.value > 0)
       .sort((a, b) => (b.value as number) - (a.value as number))
       .slice(0, 5);
-
     const otherServices = payload
       .slice(5)
       .filter((p) => (p.value as number) > 0);
@@ -140,7 +120,6 @@ const CustomTooltip = ({
       (acc, p) => acc + ((p.value as number) || 0),
       0
     );
-
     return (
       <div className="rounded-lg border bg-background p-3 shadow-lg min-w-[300px]">
         <p className="font-bold text-base mb-2">
@@ -154,7 +133,7 @@ const CustomTooltip = ({
         <div className="space-y-1">
           {top5Services.map((pld, index: number) => (
             <div
-              key={index}
+              key={`${pld.name}-${index}`}
               className="flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-2">
@@ -199,6 +178,8 @@ export function BillingDailyServiceBreakdown({
   monthlyData,
   showAll = false,
 }: DailyBillingChartProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
   const { transformedData, renderingServices, serviceColorMap, tableData } =
     useMemo(() => {
       if (!dailyData?.dailyBreakdown || !monthlyData?.breakdown) {
@@ -210,29 +191,23 @@ export function BillingDailyServiceBreakdown({
         };
       }
 
-      const sortedMonthlyServices = [...monthlyData.breakdown].sort(
-        (a, b) => b.rawValue - a.rawValue
-      );
-
       const colorMap = new Map<string, string>();
-      sortedMonthlyServices.forEach((service, index) => {
+      monthlyData.breakdown.forEach((service, index) => {
         colorMap.set(service.service, COLORS[index % COLORS.length]);
       });
 
-      const servicesToRender = [...sortedMonthlyServices]
-        .map((s) => s.service)
-        .reverse();
+      const servicesToRender = [...monthlyData.breakdown]
+        .sort((a, b) => a.rawValue - b.rawValue)
+        .map((s) => s.service);
 
       const finalChartData = dailyData.dailyBreakdown.map((day) => {
         const isPlaceholder = day.services.length === 0;
-
         const chartEntry: { [key: string]: any } = {
           name: day.date.substring(8, 10),
           fullDate: day.date,
           isPlaceholder: isPlaceholder,
           placeholder: isPlaceholder ? 1 : 0,
         };
-
         monthlyData.breakdown.forEach((monthlyService) => {
           const serviceName = monthlyService.service;
           const serviceData = day.services.find(
@@ -243,12 +218,37 @@ export function BillingDailyServiceBreakdown({
         return chartEntry;
       });
 
-      const finalTableData = (
-        showAll ? sortedMonthlyServices : sortedMonthlyServices.slice(0, 5)
-      ).map((service) => ({
-        ...service,
-        color: colorMap.get(service.service) || '#ccc',
-      }));
+      const totalCostsPerService = new Map<string, number>();
+      dailyData.dailyBreakdown.forEach((day) => {
+        day.services.forEach((service) => {
+          totalCostsPerService.set(
+            service.service,
+            (totalCostsPerService.get(service.service) || 0) + service.cost
+          );
+        });
+      });
+
+      let sortedTableData = Array.from(totalCostsPerService.entries())
+        .map(([service, total]) => ({
+          service,
+          value: formatCurrency(total),
+          color: colorMap.get(service) || '#ccc',
+        }))
+        .sort(
+          (a, b) =>
+            totalCostsPerService.get(b.service)! -
+            totalCostsPerService.get(a.service)!
+        );
+
+      let finalTableData = sortedTableData;
+
+      if (showAll) {
+        finalTableData = finalTableData.filter((item) =>
+          item.service.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      } else {
+        finalTableData = finalTableData.slice(0, 5);
+      }
 
       return {
         transformedData: finalChartData,
@@ -256,7 +256,7 @@ export function BillingDailyServiceBreakdown({
         serviceColorMap: colorMap,
         tableData: finalTableData,
       };
-    }, [dailyData, monthlyData, showAll]);
+    }, [dailyData, monthlyData, showAll, searchTerm]);
 
   if (!dailyData || !monthlyData) {
     return (
@@ -301,7 +301,7 @@ export function BillingDailyServiceBreakdown({
               />
               {renderingServices.map((serviceName, index) => (
                 <Bar
-                  key={serviceName}
+                  key={`${serviceName}-${index}`}
                   dataKey={serviceName}
                   stackId="a"
                   fill={serviceColorMap.get(serviceName) || '#ccc'}
@@ -314,6 +314,7 @@ export function BillingDailyServiceBreakdown({
                 />
               ))}
               <Bar
+                key="placeholder-bar"
                 dataKey="placeholder"
                 stackId="a"
                 fill={PLACEHOLDER_COLOR}
@@ -324,7 +325,24 @@ export function BillingDailyServiceBreakdown({
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-md border">
+        {showAll && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Cari layanan..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div
+          className={`rounded-md border ${
+            showAll ? 'max-h-[400px] overflow-y-auto' : ''
+          }`}
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -335,8 +353,8 @@ export function BillingDailyServiceBreakdown({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tableData.map((item) => (
-                <TableRow key={item.service}>
+              {tableData.map((item, index) => (
+                <TableRow key={`${item.service}-${index}`}>
                   <TableCell className="font-medium flex items-center gap-2">
                     <div
                       className="h-3 w-3 rounded-full shrink-0"
