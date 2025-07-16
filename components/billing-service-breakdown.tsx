@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   Table,
@@ -16,6 +17,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 interface ServiceBreakdownProps {
   data: {
@@ -58,17 +61,35 @@ export function BillingServiceBreakdown({
   currentMonthLabel,
   selectedYear,
 }: ServiceBreakdownProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
   const breakdown = data?.breakdown || [];
-  const sortedData = [...breakdown].sort((a, b) => b.rawValue - a.rawValue);
-  const chartServices = showAll ? sortedData : sortedData.slice(0, 10);
-  const tableServices = showAll ? sortedData : sortedData.slice(0, 5);
+  const sortedData = useMemo(
+    () => [...breakdown].sort((a, b) => b.rawValue - a.rawValue),
+    [breakdown]
+  );
   const total = data?.total?.rawValue || 0;
 
-  const dataWithColors = chartServices.map((item, index) => ({
-    ...item,
-    color: COLORS[index % COLORS.length],
-    percent: total > 0 ? (item.rawValue / total) * 100 : 0,
-  }));
+  const chartData = useMemo(() => {
+    const chartServices = showAll ? sortedData : sortedData.slice(0, 10);
+    return chartServices
+      .filter((item) => item.rawValue > 0)
+      .map((item, index) => ({
+        ...item,
+        color: COLORS[index % COLORS.length],
+        percent: total > 0 ? (item.rawValue / total) * 100 : 0,
+      }));
+  }, [sortedData, showAll, total]);
+
+  const tableData = useMemo(() => {
+    const services = showAll ? sortedData : sortedData.slice(0, 5);
+    if (showAll) {
+      return services.filter((service) =>
+        service.service.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return services;
+  }, [sortedData, showAll, searchTerm]);
 
   const renderCustomizedLabel = (props: any) => {
     const { cx, cy, midAngle, outerRadius, index } = props;
@@ -76,7 +97,7 @@ export function BillingServiceBreakdown({
     const radius = outerRadius + 10;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    const entry = dataWithColors[index];
+    const entry = chartData[index];
     const percent = entry.percent;
 
     if (percent < 3) return null;
@@ -98,7 +119,7 @@ export function BillingServiceBreakdown({
   return (
     <Card className="border shadow-sm">
       <CardHeader>
-        <CardTitle>Breakdown Layanan</CardTitle>
+        <CardTitle>{showAll ? 'Breakdown Layanan' : 'Top 5 Layanan'}</CardTitle>
         <CardDescription>
           Biaya per layanan GCP untuk bulan {currentMonthLabel} {selectedYear}
         </CardDescription>
@@ -114,47 +135,63 @@ export function BillingServiceBreakdown({
             </CardContent>
           </Card>
         )}
-        <div className="flex flex-col xl:flex-row gap-4 items-center justify-center">
-          <div className="h-[300px] w-full flex justify-center items-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={dataWithColors}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="rawValue"
-                  nameKey="service"
-                  label={renderCustomizedLabel}
-                  labelLine={false}
-                  isAnimationActive={false}
-                >
-                  {dataWithColors.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: number, name: string) => [
-                    `Rp ${value.toLocaleString('id-ID', {
-                      maximumFractionDigits: 0,
-                    })}`,
-                    name,
-                  ]}
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    padding: '8px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="h-[300px] w-full flex justify-center items-center">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={2}
+                dataKey="rawValue"
+                nameKey="service"
+                label={renderCustomizedLabel}
+                labelLine={false}
+                isAnimationActive={false}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  `Rp ${value.toLocaleString('id-ID', {
+                    maximumFractionDigits: 0,
+                  })}`,
+                  name,
+                ]}
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                  padding: '8px',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
-        <div className="rounded-md border max-h-[400px] overflow-y-auto">
+
+        {showAll && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Cari layanan..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div
+          className={`rounded-md border ${
+            showAll ? 'max-h-[400px] overflow-y-auto' : ''
+          }`}
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -163,16 +200,15 @@ export function BillingServiceBreakdown({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tableServices.map((service) => (
+              {tableData.map((service, idx) => (
                 <TableRow key={service.service}>
                   <TableCell className="flex items-center gap-2">
                     <div
                       className="h-3 w-3 rounded-full"
                       style={{
                         backgroundColor:
-                          dataWithColors.find(
-                            (s) => s.service === service.service
-                          )?.color || '#6b7280',
+                          chartData.find((s) => s.service === service.service)
+                            ?.color || COLORS[idx % COLORS.length],
                       }}
                     />
                     <span>{service.service}</span>
