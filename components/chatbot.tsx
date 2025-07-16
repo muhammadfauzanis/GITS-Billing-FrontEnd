@@ -155,7 +155,7 @@ export default function ChatbotPage() {
                     : 'bg-white text-blue-800 border border-blue-100'
                 }`}
               >
-                <pre className="whitespace-pre-wrap">{msg.text}</pre>
+                <pre className="whitespace-pre-wrap font-sans">{msg.text}</pre>
               </div>
             </div>
           ))}
