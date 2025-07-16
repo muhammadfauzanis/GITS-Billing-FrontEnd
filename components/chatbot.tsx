@@ -46,7 +46,7 @@ export default function ChatbotPage() {
     let userMessage = input;
 
     if (selectedTool === 'recommend') {
-      userMessage = `Service: ${service}\nProject ID: ${projectId}`;
+      userMessage = `Rekomendasi untuk Service ${service} pada project ${projectId}`;
     }
 
     setMessages(prev => [...prev, { from: user ? 'user' : 'bot', text: userMessage }]);
