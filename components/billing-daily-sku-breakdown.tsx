@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Bar,
   BarChart,
@@ -26,24 +26,43 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import {
   NameType,
   ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SkuTrend {
   sku: string;
   daily_costs: { [date: string]: number };
 }
 
-interface DailySkuData {
+interface TrendData {
   skuCostTrend: SkuTrend[];
   days: string[];
-  skus: string[];
+}
+
+interface BreakdownRow {
+  sku: string;
+  service: string;
+  skuId: string;
+  usage: string;
+  cost: string;
+  discounts: string;
+  promotions: string;
+  subtotal: string;
+  rawSubtotal: number;
+}
+
+interface BreakdownData {
+  data: BreakdownRow[];
 }
 
 interface DailySkuChartProps {
-  data: DailySkuData;
+  trendData: TrendData;
+  breakdownData: BreakdownData;
   showAll?: boolean;
 }
 
@@ -63,23 +82,27 @@ const COLORS = [
 ];
 const PLACEHOLDER_COLOR = '#f3f4f6';
 
-const formatYAxis = (value: number): string => {
-  if (value >= 1_000_000) return `Rp${(value / 1_000_000).toFixed(0)}M`;
-  if (value >= 1_000) return `Rp${(value / 1_000).toFixed(0)}K`;
-  return `Rp${value}`;
+const parseCurrency = (value: string): number => {
+  return Number(value.replace(/[^0-9,-]+/g, '').replace(',', '.'));
 };
 
-const formatCurrency = (value: number): string => {
-  return `Rp ${value.toLocaleString('id-ID', {
+const formatYAxis = (value: number): string => {
+  if (Math.abs(value) >= 1_000_000)
+    return `Rp${(value / 1_000_000).toFixed(0)}M`;
+  if (Math.abs(value) >= 1_000) return `Rp${(value / 1_000).toFixed(0)}K`;
+  return `Rp${value.toFixed(0)}`;
+};
+
+const formatCurrency = (value: number): string =>
+  `Rp ${value.toLocaleString('id-ID', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-};
 
 const formatDateForTooltip = (dateStr: string): string => {
   const date = new Date(dateStr);
   date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('id-ID', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -89,7 +112,6 @@ const formatDateForTooltip = (dateStr: string): string => {
 const CustomTooltip = ({
   active,
   payload,
-  label,
   skuColorMap,
 }: TooltipProps<ValueType, NameType> & {
   skuColorMap: Map<string, string>;
@@ -133,7 +155,7 @@ const CustomTooltip = ({
               key={index}
               className="flex items-center justify-between gap-4"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 max-w-[200px]">
                 <div
                   className="h-2.5 w-2.5 rounded-sm shrink-0"
                   style={{
@@ -142,13 +164,13 @@ const CustomTooltip = ({
                   }}
                 />
                 <span
-                  className="text-sm text-muted-foreground truncate max-w-[150px]"
+                  className="text-sm text-muted-foreground truncate"
                   title={pld.name as string}
                 >
                   {pld.name}
                 </span>
               </div>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium whitespace-nowrap">
                 {formatCurrency(pld.value as number)}
               </span>
             </div>
@@ -161,7 +183,7 @@ const CustomTooltip = ({
                   {otherSkus.length} lainnya
                 </span>
               </div>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium whitespace-nowrap">
                 {formatCurrency(othersTotal)}
               </span>
             </div>
@@ -174,72 +196,87 @@ const CustomTooltip = ({
 };
 
 export function BillingDailySkuBreakdown({
-  data,
+  trendData,
+  breakdownData,
   showAll = false,
 }: DailySkuChartProps) {
-  const { transformedData, renderingSkus, skuColorMap, tableData } =
-    useMemo(() => {
-      if (!data?.skuCostTrend || !data?.days) {
-        return {
-          transformedData: [],
-          renderingSkus: [],
-          skuColorMap: new Map(),
-          tableData: [],
-        };
-      }
+  const [searchTerm, setSearchTerm] = useState('');
 
-      const monthlyTotals = data.skuCostTrend
-        .map((item) => ({
-          sku: item.sku,
-          totalCost: Object.values(item.daily_costs).reduce(
-            (sum, current) => sum + current,
-            0
-          ),
-        }))
-        .sort((a, b) => b.totalCost - a.totalCost);
-
-      const colorMap = new Map<string, string>();
-      monthlyTotals.forEach((item, index) => {
-        colorMap.set(item.sku, COLORS[index % COLORS.length]);
-      });
-
-      const skusToRender = [...monthlyTotals].map((s) => s.sku).reverse();
-
-      const finalChartData = data.days.map((day) => {
-        const hasData = data.skuCostTrend.some((s) => s.daily_costs[day] > 0);
-        const entry: { [key: string]: any } = {
-          name: day.substring(8, 10),
-          fullDate: day,
-          isPlaceholder: !hasData,
-          placeholder: !hasData ? 1 : 0,
-        };
-        data.skuCostTrend.forEach((skuItem) => {
-          entry[skuItem.sku] = skuItem.daily_costs[day] || 0;
-        });
-        return entry;
-      });
-
-      const finalTableData = (
-        showAll ? monthlyTotals : monthlyTotals.slice(0, 5)
-      ).map((item) => ({
-        ...item,
-        color: colorMap.get(item.sku) || '#ccc',
-      }));
-
+  const { transformedData, renderingSkus, skuColorMap } = useMemo(() => {
+    if (!trendData?.skuCostTrend || !trendData?.days) {
       return {
-        transformedData: finalChartData,
-        renderingSkus: skusToRender,
-        skuColorMap: colorMap,
-        tableData: finalTableData,
+        transformedData: [],
+        renderingSkus: [],
+        skuColorMap: new Map(),
       };
-    }, [data, showAll]);
+    }
+
+    const monthlyTotals = trendData.skuCostTrend
+      .map((item) => ({
+        sku: item.sku,
+        totalCost: Object.values(item.daily_costs).reduce(
+          (sum, current) => sum + current,
+          0
+        ),
+      }))
+      .sort((a, b) => b.totalCost - a.totalCost);
+
+    const colorMap = new Map<string, string>();
+    monthlyTotals.forEach((item, index) => {
+      colorMap.set(item.sku, COLORS[index % COLORS.length]);
+    });
+
+    const skusToRender = [...monthlyTotals].map((s) => s.sku).reverse();
+
+    const finalChartData = trendData.days.map((day) => {
+      const hasData = trendData.skuCostTrend.some(
+        (s) => (s.daily_costs[day] || 0) > 0
+      );
+      const entry: { [key: string]: any } = {
+        name: day.substring(8, 10),
+        fullDate: day,
+        isPlaceholder: !hasData,
+        placeholder: !hasData ? 1 : 0,
+      };
+      trendData.skuCostTrend.forEach((skuItem) => {
+        entry[skuItem.sku] = skuItem.daily_costs[day] || 0;
+      });
+      return entry;
+    });
+
+    return {
+      transformedData: finalChartData,
+      renderingSkus: skusToRender,
+      skuColorMap: colorMap,
+    };
+  }, [trendData]);
+
+  const tableData = useMemo(() => {
+    if (!breakdownData?.data) return [];
+
+    const sorted = [...breakdownData.data].sort(
+      (a, b) => parseCurrency(b.cost) - parseCurrency(a.cost)
+    );
+
+    let filtered = sorted;
+    if (showAll) {
+      filtered = sorted.filter(
+        (item) =>
+          item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.skuId.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return showAll ? filtered : sorted.slice(0, 5);
+  }, [breakdownData, searchTerm, showAll]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Biaya Harian per SKU</CardTitle>
         <CardDescription>
-          Visualisasi biaya harian untuk setiap SKU bulan ini.
+          Visualisasi dan rincian biaya harian untuk setiap SKU bulan ini.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -278,6 +315,7 @@ export function BillingDailySkuBreakdown({
                       ? [4, 4, 0, 0]
                       : [0, 0, 0, 0]
                   }
+                  isAnimationActive={false}
                 />
               ))}
               <Bar
@@ -285,39 +323,82 @@ export function BillingDailySkuBreakdown({
                 stackId="a"
                 fill={PLACEHOLDER_COLOR}
                 radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>SKU</TableHead>
-                <TableHead className="text-right">
-                  Total Biaya Bulan Ini
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tableData.map((item) => (
-                <TableRow key={item.sku}>
-                  <TableCell className="font-medium flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full shrink-0"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="truncate" title={item.sku}>
-                      {item.sku}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(item.totalCost)}
-                  </TableCell>
+
+        <div className="space-y-4">
+          {showAll && (
+            <div className="relative max-w-md">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Cari SKU, Service, atau SKU ID..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          )}
+
+          <ScrollArea
+            className={`${showAll ? 'h-[500px]' : ''} w-full rounded-md border`}
+          >
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <TableHead className="w-[350px]">SKU</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>SKU ID</TableHead>
+                  <TableHead>Usage</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="text-right">Discounts</TableHead>
+                  <TableHead className="text-right">Subtotal</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {tableData.length > 0 ? (
+                  tableData.map((item) => (
+                    <TableRow key={item.skuId}>
+                      <TableCell className="font-medium max-w-[350px] truncate">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-2.5 w-2.5 rounded-sm shrink-0"
+                            style={{
+                              backgroundColor:
+                                skuColorMap.get(item.sku) || '#D1D5DB',
+                            }}
+                          />
+                          <span title={item.sku}>{item.sku}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{item.service}</TableCell>
+                      <TableCell>{item.skuId}</TableCell>
+                      <TableCell>{item.usage}</TableCell>
+                      <TableCell className="text-right">{item.cost}</TableCell>
+                      <TableCell className="text-right">
+                        {item.discounts}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {item.subtotal}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      Tidak ada data untuk ditampilkan.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </div>
       </CardContent>
     </Card>

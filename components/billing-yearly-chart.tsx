@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -10,7 +11,6 @@ import {
   YAxis,
   TooltipProps,
 } from 'recharts';
-import { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -26,6 +26,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 interface YearlyUsageData {
@@ -66,15 +68,9 @@ const formatYAxis = (value: number) => {
   return `${sign}Rp${absValue}`;
 };
 
-interface TooltipPayloadItem {
-  name: string;
-  value: number;
-  fill: string;
-}
-
 const CustomTooltip = ({ active, payload, label }: TooltipProps<any, any>) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload; // ⬅️ Akses objek lengkap bar yang sedang dihover
+    const data = payload[0].payload;
     const total = data.total;
 
     const sortedPayload = payload
@@ -130,10 +126,13 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<any, any>) => {
   }
   return null;
 };
+
 export function BillingYearlyChart({
   data,
   showAll = false,
 }: YearlyBillingChartProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
   if (!data || !Array.isArray(data.data)) {
     return (
       <div className="flex h-[350px] items-center justify-center text-muted-foreground">
@@ -179,7 +178,6 @@ export function BillingYearlyChart({
           if (cost > 0) visibleTotal += cost;
         });
 
-        // Kita simpan nilai total sebenarnya sebagai "trueTotal"
         monthData['total'] = trueTotal;
         monthData['visibleTotal'] = visibleTotal;
 
@@ -204,14 +202,20 @@ export function BillingYearlyChart({
       })
       .filter((s) => s.total !== 0);
 
-    const finalTableData = showAll
-      ? sortedServicesWithTotals
-      : sortedServicesWithTotals.slice(0, 5);
-
     const totalCost = sortedServicesWithTotals.reduce(
       (acc, item) => acc + item.total,
       0
     );
+
+    let finalTableData = showAll
+      ? sortedServicesWithTotals
+      : sortedServicesWithTotals.slice(0, 5);
+
+    if (showAll) {
+      finalTableData = finalTableData.filter((service) =>
+        service.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
     return {
       transformedData: finalTransformedData,
@@ -220,7 +224,7 @@ export function BillingYearlyChart({
       tableData: finalTableData,
       grandTotal: totalCost,
     };
-  }, [data, showAll]);
+  }, [data, showAll, searchTerm]);
 
   return (
     <Card>
@@ -283,12 +287,31 @@ export function BillingYearlyChart({
                       ? [4, 4, 0, 0]
                       : [0, 0, 0, 0]
                   }
+                  isAnimationActive={false}
                 />
               ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="rounded-md border">
+
+        {showAll && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Cari layanan..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div
+          className={`rounded-md border ${
+            showAll ? 'max-h-[400px] overflow-y-auto' : ''
+          }`}
+        >
           <Table>
             <TableHeader>
               <TableRow>

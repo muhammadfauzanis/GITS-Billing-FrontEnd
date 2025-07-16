@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -10,7 +10,6 @@ import {
   XAxis,
   YAxis,
   TooltipProps,
-  Cell,
 } from 'recharts';
 import {
   Table,
@@ -27,20 +26,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import {
   NameType,
   ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
 
-// --- TYPE DEFINITIONS ---
 interface ProjectTrend {
   project: string;
   daily_costs: { [date: string]: number };
 }
 
 interface MonthlyProject {
-  service: string; // project name
+  service: string;
   value: string;
   rawValue: number;
 }
@@ -60,7 +60,6 @@ interface DailyProjectChartProps {
   showAll?: boolean;
 }
 
-// --- STYLING & FORMATTING ---
 const COLORS = [
   '#4285F4',
   '#DB4437',
@@ -70,10 +69,6 @@ const COLORS = [
   '#00ACC1',
   '#FF7043',
   '#9E9D24',
-  '#5C6BC0',
-  '#8D6E63',
-  '#6b7280',
-  '#ec4899',
 ];
 const PLACEHOLDER_COLOR = '#f3f4f6';
 
@@ -93,11 +88,9 @@ const formatDateForTooltip = (dateStr: string): string => {
   });
 };
 
-// --- CUSTOM TOOLTIP COMPONENT ---
 const CustomTooltip = ({
   active,
   payload,
-  label,
   projectColorMap,
 }: TooltipProps<ValueType, NameType> & {
   projectColorMap: Map<string, string>;
@@ -113,12 +106,10 @@ const CustomTooltip = ({
       0
     );
     const fullDate = payload[0].payload.fullDate;
-
     const top5Projects = payload
       .filter((p) => typeof p.value === 'number' && p.value > 0)
       .sort((a, b) => (b.value as number) - (a.value as number))
       .slice(0, 5);
-
     const otherProjects = payload
       .slice(5)
       .filter((p) => (p.value as number) > 0);
@@ -126,7 +117,6 @@ const CustomTooltip = ({
       (acc, p) => acc + ((p.value as number) || 0),
       0
     );
-
     return (
       <div className="rounded-lg border bg-background p-3 shadow-lg min-w-[300px]">
         <p className="font-bold text-base mb-2">
@@ -140,7 +130,7 @@ const CustomTooltip = ({
         <div className="space-y-1">
           {top5Projects.map((pld, index: number) => (
             <div
-              key={index}
+              key={`${pld.name}-${index}`}
               className="flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-2">
@@ -185,6 +175,8 @@ export function BillingDailyProjectBreakdown({
   monthlyData,
   showAll = false,
 }: DailyProjectChartProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
   const { transformedData, renderingProjects, projectColorMap, tableData } =
     useMemo(() => {
       if (!dailyData?.projectTrend || !monthlyData?.breakdown) {
@@ -232,12 +224,35 @@ export function BillingDailyProjectBreakdown({
         return chartEntry;
       });
 
-      const finalTableData = (
-        showAll ? sortedMonthlyProjects : sortedMonthlyProjects.slice(0, 5)
-      ).map((project) => ({
-        ...project,
-        color: colorMap.get(project.service) || '#ccc',
-      }));
+      const totalCostsPerProject = new Map<string, number>();
+      dailyData.projectTrend.forEach((project) => {
+        Object.values(project.daily_costs).forEach((cost) => {
+          totalCostsPerProject.set(
+            project.project,
+            (totalCostsPerProject.get(project.project) || 0) + cost
+          );
+        });
+      });
+
+      let finalTableData = Array.from(totalCostsPerProject.entries())
+        .map(([project, total]) => ({
+          service: project,
+          value: formatCurrency(total),
+          color: colorMap.get(project) || '#ccc',
+        }))
+        .sort(
+          (a, b) =>
+            totalCostsPerProject.get(b.service)! -
+            totalCostsPerProject.get(a.service)!
+        );
+
+      if (showAll) {
+        finalTableData = finalTableData.filter((item) =>
+          item.service.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      } else {
+        finalTableData = finalTableData.slice(0, 5);
+      }
 
       return {
         transformedData: finalChartData,
@@ -245,7 +260,7 @@ export function BillingDailyProjectBreakdown({
         projectColorMap: colorMap,
         tableData: finalTableData,
       };
-    }, [dailyData, monthlyData, showAll]);
+    }, [dailyData, monthlyData, showAll, searchTerm]);
 
   if (!dailyData || !monthlyData) {
     return (
@@ -290,7 +305,7 @@ export function BillingDailyProjectBreakdown({
               />
               {renderingProjects.map((projectName, index) => (
                 <Bar
-                  key={projectName}
+                  key={`${projectName}-${index}`}
                   dataKey={projectName}
                   stackId="a"
                   fill={projectColorMap.get(projectName) || '#ccc'}
@@ -299,19 +314,39 @@ export function BillingDailyProjectBreakdown({
                       ? [4, 4, 0, 0]
                       : [0, 0, 0, 0]
                   }
+                  isAnimationActive={false}
                 />
               ))}
               <Bar
+                key="placeholder-bar-project"
                 dataKey="placeholder"
                 stackId="a"
                 fill={PLACEHOLDER_COLOR}
                 radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-md border">
+        {showAll && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Cari proyek..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div
+          className={`rounded-md border ${
+            showAll ? 'max-h-[400px] overflow-y-auto' : ''
+          }`}
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -322,8 +357,8 @@ export function BillingDailyProjectBreakdown({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tableData.map((item) => (
-                <TableRow key={item.service}>
+              {tableData.map((item, index) => (
+                <TableRow key={`${item.service}-${index}`}>
                   <TableCell className="font-medium flex items-center gap-2">
                     <div
                       className="h-3 w-3 rounded-full shrink-0"

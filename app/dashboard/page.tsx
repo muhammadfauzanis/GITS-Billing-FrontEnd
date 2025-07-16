@@ -187,8 +187,8 @@ export default function DashboardPage() {
                     </div>
                   ) : dailySkuTrendData && dailySkuBreakdownData ? (
                     <BillingDailySkuBreakdown
-                      data={dailySkuTrendData}
-                      // breakdownData={dailySkuBreakdownData}
+                      trendData={dailySkuTrendData}
+                      breakdownData={dailySkuBreakdownData}
                     />
                   ) : (
                     <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
