@@ -12,7 +12,7 @@ import { BillingProjectBreakdown } from '@/components/billing-project-breakdown'
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
 import { useDashboardStore } from '@/lib/store';
 import { getClients } from '@/lib/api/index';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'; // TabsContent tidak lagi kita butuhkan di sini
 import { BillingYearlyChart } from '@/components/billing-yearly-chart';
 import { BillingDailyServiceBreakdown } from '@/components/billing-daily-service-breakdown';
 import { BillingDailyProjectBreakdown } from '@/components/billing-daily-project-breakdown';
@@ -50,10 +50,14 @@ export default function DashboardPage() {
     currentMonth - 1
   ).toLocaleString('id-ID', { month: 'long' });
 
+  // START: Perubahan State untuk Tab Bertingkat
+  const [primaryTab, setPrimaryTab] = useState('monthly'); // 'daily', 'monthly', 'yearly'
+  const [secondaryTab, setSecondaryTab] = useState('service'); // 'service', 'project', 'sku'
+  // END: Perubahan State
+
   const { summaryData, serviceBreakdown, projectBreakdownData, projects } =
     dashboardData || {};
   const isLoadingDashboard = loading.dashboard;
-  const isLoadingDailySku = loading.dailySkuTrend;
 
   useEffect(() => {
     if (user) {
@@ -67,6 +71,8 @@ export default function DashboardPage() {
   }, [user, initializeDashboard, setClients]);
 
   useEffect(() => {
+    // Data fetching logic Anda saat ini sudah mengambil semua data di awal,
+    // jadi kita tidak perlu mengubahnya untuk sekarang.
     if (selectedClientId) {
       fetchDashboardData();
       fetchYearlyUsageData({ months: 12 });
@@ -133,106 +139,133 @@ export default function DashboardPage() {
             <>
               {summaryData && <BillingOverview data={summaryData} />}
 
-              <Tabs defaultValue="monthly" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
-                  <TabsTrigger value="daily-service">
-                    Harian (Layanan)
-                  </TabsTrigger>
-                  <TabsTrigger value="daily-project">
-                    Harian (Proyek)
-                  </TabsTrigger>
-                  <TabsTrigger value="daily-sku">Harian (SKU)</TabsTrigger>
-                  <TabsTrigger value="monthly">Bulanan</TabsTrigger>
-                  <TabsTrigger value="yearly">Tahunan</TabsTrigger>
-                </TabsList>
+              {/* START: Struktur Tab Baru */}
+              <div className="space-y-4">
+                {/* Tab Utama */}
+                <Tabs
+                  value={primaryTab}
+                  onValueChange={setPrimaryTab}
+                  className="w-full"
+                >
+                  <TabsList>
+                    <TabsTrigger value="daily">Daily</TabsTrigger>
+                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                    <TabsTrigger value="yearly">Year To Date</TabsTrigger>
+                  </TabsList>
+                </Tabs>
 
-                <TabsContent value="daily-service">
-                  {loading.daily || isLoadingDashboard ? (
-                    <div className="flex h-[450px] items-center justify-center text-muted-foreground">
-                      <Loader2 className="animate-spin h-8 w-8" />
-                    </div>
-                  ) : dailyData && serviceBreakdown ? (
-                    <BillingDailyServiceBreakdown
-                      dailyData={dailyData}
-                      monthlyData={serviceBreakdown}
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
-                      Tidak ada data harian untuk ditampilkan.
+                {/* Sub-Navigasi, hanya muncul jika tab Harian aktif */}
+                {primaryTab === 'daily' && (
+                  <Tabs
+                    value={secondaryTab}
+                    onValueChange={setSecondaryTab}
+                    className="w-full"
+                  >
+                    <TabsList>
+                      <TabsTrigger value="service">Services</TabsTrigger>
+                      <TabsTrigger value="project">Projects</TabsTrigger>
+                      <TabsTrigger value="sku">SKU</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                )}
+
+                {/* Konten yang dirender secara kondisional */}
+                <div className="pt-4">
+                  {/* Tampilan Bulanan */}
+                  {primaryTab === 'monthly' && (
+                    <div className="grid gap-6 xl:grid-cols-2">
+                      {projectBreakdownData?.breakdown?.length > 0 ? (
+                        <BillingProjectBreakdown
+                          data={projectBreakdownData}
+                          currentMonthLabel={currentMonthLabel}
+                          selectedYear={currentYear}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground pt-4">
+                          Tidak ada data breakdown project.
+                        </p>
+                      )}
+                      {serviceBreakdown?.breakdown?.length > 0 ? (
+                        <BillingServiceBreakdown
+                          data={serviceBreakdown}
+                          currentMonthLabel={currentMonthLabel}
+                          selectedYear={currentYear}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground pt-4">
+                          Tidak ada data breakdown layanan.
+                        </p>
+                      )}
                     </div>
                   )}
-                </TabsContent>
 
-                <TabsContent value="daily-project">
-                  {loading.dailyProjectTrend || isLoadingDashboard ? (
-                    <div className="flex h-[450px] items-center justify-center text-muted-foreground">
-                      <Loader2 className="animate-spin h-8 w-8" />
-                    </div>
-                  ) : dailyProjectTrendData && projectBreakdownData ? (
-                    <BillingDailyProjectBreakdown
-                      dailyData={dailyProjectTrendData}
-                      monthlyData={projectBreakdownData}
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
-                      Tidak ada data tren proyek harian untuk ditampilkan.
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="daily-sku">
-                  {loading.dailySkuTrend || loading.dailySkuBreakdown ? (
-                    <div className="flex h-[450px] items-center justify-center text-muted-foreground">
-                      <Loader2 className="animate-spin h-8 w-8" />
-                    </div>
-                  ) : dailySkuTrendData && dailySkuBreakdownData ? (
-                    <BillingDailySkuBreakdown
-                      trendData={dailySkuTrendData}
-                      breakdownData={dailySkuBreakdownData}
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
-                      Tidak ada data penggunaan SKU harian untuk ditampilkan.
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="monthly" className="space-y-6">
-                  <div className="grid gap-6 xl:grid-cols-2">
-                    {projectBreakdownData?.breakdown?.length > 0 ? (
-                      <BillingProjectBreakdown
-                        data={projectBreakdownData}
-                        currentMonthLabel={currentMonthLabel}
-                        selectedYear={currentYear}
-                      />
+                  {/* Tampilan Tahunan */}
+                  {primaryTab === 'yearly' &&
+                    (yearlyUsageData ? (
+                      <BillingYearlyChart data={yearlyUsageData} />
                     ) : (
-                      <p className="text-sm text-muted-foreground pt-4">
-                        Tidak ada data breakdown project.
-                      </p>
-                    )}
-                    {serviceBreakdown?.breakdown?.length > 0 ? (
-                      <BillingServiceBreakdown
-                        data={serviceBreakdown}
-                        currentMonthLabel={currentMonthLabel}
-                        selectedYear={currentYear}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground pt-4">
-                        Tidak ada data breakdown layanan.
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-                <TabsContent value="yearly">
-                  {yearlyUsageData ? (
-                    <BillingYearlyChart data={yearlyUsageData} />
-                  ) : (
-                    <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
-                      Memuat data...
+                      <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
+                        Memuat data...
+                      </div>
+                    ))}
+
+                  {/* Tampilan Harian */}
+                  {primaryTab === 'daily' && (
+                    <div>
+                      {secondaryTab === 'service' &&
+                        (loading.daily || isLoadingDashboard ? (
+                          <div className="flex h-[450px] items-center justify-center text-muted-foreground">
+                            <Loader2 className="animate-spin h-8 w-8" />
+                          </div>
+                        ) : dailyData && serviceBreakdown ? (
+                          <BillingDailyServiceBreakdown
+                            dailyData={dailyData}
+                            monthlyData={serviceBreakdown}
+                          />
+                        ) : (
+                          <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
+                            Tidak ada data harian untuk ditampilkan.
+                          </div>
+                        ))}
+
+                      {secondaryTab === 'project' &&
+                        (loading.dailyProjectTrend || isLoadingDashboard ? (
+                          <div className="flex h-[450px] items-center justify-center text-muted-foreground">
+                            <Loader2 className="animate-spin h-8 w-8" />
+                          </div>
+                        ) : dailyProjectTrendData && projectBreakdownData ? (
+                          <BillingDailyProjectBreakdown
+                            dailyData={dailyProjectTrendData}
+                            monthlyData={projectBreakdownData}
+                          />
+                        ) : (
+                          <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
+                            Tidak ada data tren proyek harian untuk ditampilkan.
+                          </div>
+                        ))}
+
+                      {secondaryTab === 'sku' &&
+                        (loading.dailySkuTrend || loading.dailySkuBreakdown ? (
+                          <div className="flex h-[450px] items-center justify-center text-muted-foreground">
+                            <Loader2 className="animate-spin h-8 w-8" />
+                          </div>
+                        ) : dailySkuTrendData && dailySkuBreakdownData ? (
+                          <BillingDailySkuBreakdown
+                            trendData={dailySkuTrendData}
+                            breakdownData={dailySkuBreakdownData}
+                          />
+                        ) : (
+                          <div className="flex h-full min-h-[450px] items-center justify-center text-muted-foreground">
+                            Tidak ada data penggunaan SKU harian untuk
+                            ditampilkan.
+                          </div>
+                        ))}
                     </div>
                   )}
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
+              {/* END: Struktur Tab Baru */}
+
               {projects && projects.length > 0 && (
                 <ProjectsList projects={projects} />
               )}
