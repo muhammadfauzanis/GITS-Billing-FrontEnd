@@ -275,7 +275,7 @@ function UsagePageContent() {
                         />
                       ) : (
                         <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.
+                          Data tidak tersedia.``
                         </p>
                       )}
                     </TabsContent>
@@ -283,12 +283,11 @@ function UsagePageContent() {
                 </Tabs>
               </TabsContent>
 
-              {/* FIX: Tambahkan mt-6 (margin-top) untuk memberi jarak */}
               <TabsContent value="monthly" className="mt-6">
                 <Tabs value={subTab} onValueChange={handleSubTabChange}>
                   <TabsList>
-                    <TabsTrigger value="service">Layanan</TabsTrigger>
-                    <TabsTrigger value="project">Proyek</TabsTrigger>
+                    <TabsTrigger value="service">Services</TabsTrigger>
+                    <TabsTrigger value="project">Projects</TabsTrigger>
                   </TabsList>
                   <div className="pt-4">
                     <TabsContent value="service">

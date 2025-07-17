@@ -1,5 +1,11 @@
 import { axiosInstance } from './index';
 
+interface BudgetSettingsPayload {
+  budget_value: number;
+  alert_thresholds: number[];
+  alert_emails: string[];
+}
+
 export const getBillingSummary = async (clientId?: string) => {
   try {
     const params = clientId ? { clientId } : {};
@@ -108,34 +114,45 @@ export const getMonthlyUsage = async (
   }
 };
 
-export const getBudget = async (clientId?: string) => {
+export const getBudgetSettings = async (clientId?: string) => {
   try {
     const params = clientId ? { clientId } : {};
-    const response = await axiosInstance.get('/billing/budget', { params });
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      throw new Error(error.response.data.message || 'Failed to fetch budget');
-    }
-    throw new Error(error.message || 'Failed to fetch budget');
-  }
-};
-
-export const setBudget = async (
-  data: { budget_value?: number; budget_threshold?: number },
-  clientId?: string
-) => {
-  try {
-    const params = clientId ? { clientId } : {};
-    const response = await axiosInstance.patch('/billing/budget', data, {
+    // This now points to your new GET endpoint
+    const response = await axiosInstance.get('/billing/budget-settings', {
       params,
     });
     return response.data;
   } catch (error: any) {
     if (error.response?.data) {
-      throw new Error(error.response.data.message || 'Failed to set budget');
+      throw new Error(
+        error.response.data.message || 'Failed to fetch budget settings'
+      );
     }
-    throw new Error(error.message || 'Failed to set budget');
+    throw new Error(error.message || 'Failed to fetch budget settings');
+  }
+};
+
+export const updateBudgetSettings = async (
+  payload: BudgetSettingsPayload,
+  clientId?: string
+) => {
+  try {
+    const params = clientId ? { clientId } : {};
+    const response = await axiosInstance.post(
+      '/billing/budget-settings',
+      payload,
+      {
+        params,
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message || 'Failed to update budget settings'
+      );
+    }
+    throw new Error(error.message || 'Failed to update budget settings');
   }
 };
 

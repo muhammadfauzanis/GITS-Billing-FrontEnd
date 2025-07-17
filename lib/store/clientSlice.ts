@@ -1,6 +1,9 @@
+// lib/store/clientSlice.ts
+
 import { StateCreator } from 'zustand';
-import { DashboardState, ClientSlice, Client } from './types';
-import { getBudget, setBudget as apiSetBudget } from '../api/index';
+import { DashboardState, ClientSlice, Client, BudgetSettings } from './types';
+import type { AppUser } from '../auth';
+import { getBudgetSettings, updateBudgetSettings } from '../api'; // Pastikan path import benar
 
 const now = new Date();
 
@@ -10,7 +13,6 @@ export const createClientSlice: StateCreator<
   [],
   ClientSlice
 > = (set, get) => ({
-  // --- INITIAL STATE ---
   clients: [],
   selectedClientId: undefined,
   clientName: '',
@@ -32,7 +34,7 @@ export const createClientSlice: StateCreator<
   },
 
   // --- ACTIONS ---
-  initializeDashboard: (user) => {
+  initializeDashboard: (user: AppUser) => {
     if (user.role !== 'admin' && user.clientId) {
       set({ selectedClientId: user.clientId });
     }
@@ -70,33 +72,46 @@ export const createClientSlice: StateCreator<
   fetchSettingsData: async () => {
     const { selectedClientId } = get();
     if (!selectedClientId) return;
+
     set((state) => ({
       loading: { ...state.loading, settings: true },
       error: null,
     }));
+
     try {
-      const budget = await getBudget(selectedClientId);
+      const settings = await getBudgetSettings(selectedClientId);
+
       set({
         settingsData: {
-          budgetValue: budget.budgetValue,
-          budgetThreshold: budget.budgetThreshold,
+          budget_value: settings.budgetValue,
+          alertThresholds: settings.alertThresholds || [],
+          alertEmails: settings.alertEmails || [],
         },
       });
     } catch (err: any) {
-      set({ error: err.message || 'Gagal memuat data pengaturan.' });
+      set({ error: err.message || 'Gagal memuat data pengaturan budget.' });
     } finally {
       set((state) => ({ loading: { ...state.loading, settings: false } }));
     }
   },
 
-  updateBudget: async (data) => {
+  updateBudget: async (data: BudgetSettings) => {
     const { selectedClientId } = get();
-    if (!selectedClientId) return;
+    if (!selectedClientId) {
+      throw new Error('Client ID tidak ditemukan.');
+    }
     try {
-      await apiSetBudget(data, selectedClientId);
-      get().fetchSettingsData(); // Re-fetch setelah update
+      const payloadForBackend = {
+        budget_value: data.budget_value,
+        alert_thresholds: data.alertThresholds,
+        alert_emails: data.alertEmails,
+      };
+      await updateBudgetSettings(payloadForBackend, selectedClientId);
+      await get().fetchSettingsData();
     } catch (err: any) {
-      set({ error: err.message || 'Gagal memperbarui budget.' });
+      const errorMessage = err.message || 'Gagal memperbarui budget.';
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 });

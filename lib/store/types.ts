@@ -1,9 +1,16 @@
 import type { AppUser } from '../auth';
+
 import type { DailyFilterParams } from '../api/billingDaily';
 
 export interface Client {
   id: string;
   name: string;
+}
+
+export interface BudgetSettings {
+  budget_value: number;
+  alertThresholds: number[];
+  alertEmails: string[];
 }
 
 export interface UsageFilters {
@@ -15,7 +22,6 @@ export interface ProjectDetailFilters extends UsageFilters {
   projectId: string;
 }
 
-// Interface untuk setiap slice
 export interface ClientSlice {
   clients: Client[];
   selectedClientId?: string;
@@ -23,7 +29,7 @@ export interface ClientSlice {
   dailyFilters: DailyFilterParams;
   monthlyFilters: UsageFilters;
   error: string | null;
-  settingsData: any | null;
+  settingsData: BudgetSettings | null; // <-- FIX: Gunakan tipe yang benar
   loading: {
     dashboard: boolean;
     usage: boolean;
@@ -42,10 +48,7 @@ export interface ClientSlice {
   setDailyFilters: (filters: DailyFilterParams) => void;
   setMonthlyFilters: (filters: UsageFilters) => void;
   fetchSettingsData: () => Promise<void>;
-  updateBudget: (data: {
-    budget_value?: number;
-    budget_threshold?: number;
-  }) => Promise<void>;
+  updateBudget: (data: BudgetSettings) => Promise<void>;
 }
 
 export interface DailySlice {
