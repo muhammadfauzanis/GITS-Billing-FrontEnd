@@ -12,17 +12,17 @@ const sidebarItems = [
     icon: Home,
   },
   {
-    title: 'Penggunaan',
+    title: 'Usage',
     href: '/dashboard/usage',
     icon: BarChart3,
   },
-  // {
-  //   title: "Tagihan",
-  //   href: "/dashboard/invoices",
-  //   icon: FileText,
-  // },
   {
-    title: 'Pengaturan',
+    title: 'Invoice',
+    href: '/dashboard/invoices',
+    icon: FileText,
+  },
+  {
+    title: 'Setting',
     href: '/dashboard/settings',
     icon: Settings,
   },
