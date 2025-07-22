@@ -21,8 +21,11 @@ export const createDailySlice: StateCreator<
 
   // --- ACTIONS ---
   fetchDailyData: async (filters) => {
-    const { selectedClientId, dailyFilters } = get();
+    const { selectedClientId, dailyFilters, dailyData } = get();
+    // Caching: Hanya fetch jika data belum ada atau jika ada filter baru
+    if (dailyData && !filters) return;
     if (!selectedClientId) return;
+
     const finalFilters = filters || dailyFilters;
     set((state) => ({
       loading: { ...state.loading, daily: true },
@@ -42,8 +45,10 @@ export const createDailySlice: StateCreator<
   },
 
   fetchDailyProjectTrend: async (filters) => {
-    const { selectedClientId, dailyFilters } = get();
+    const { selectedClientId, dailyFilters, dailyProjectTrendData } = get();
+    if (dailyProjectTrendData && !filters) return;
     if (!selectedClientId) return;
+
     const finalFilters = filters || dailyFilters;
     set((state) => ({
       loading: { ...state.loading, dailyProjectTrend: true },
@@ -65,8 +70,10 @@ export const createDailySlice: StateCreator<
   },
 
   fetchDailySkuTrend: async (filters) => {
-    const { selectedClientId, dailyFilters } = get();
+    const { selectedClientId, dailyFilters, dailySkuTrendData } = get();
+    if (dailySkuTrendData && !filters) return;
     if (!selectedClientId) return;
+
     const finalFilters = filters || dailyFilters;
     set((state) => ({
       loading: { ...state.loading, dailySkuTrend: true },
@@ -86,8 +93,10 @@ export const createDailySlice: StateCreator<
   },
 
   fetchDailySkuBreakdown: async (filters) => {
-    const { selectedClientId, dailyFilters } = get();
+    const { selectedClientId, dailyFilters, dailySkuBreakdownData } = get();
+    if (dailySkuBreakdownData && !filters) return;
     if (!selectedClientId) return;
+
     const finalFilters = filters || dailyFilters;
     set((state) => ({
       loading: { ...state.loading, dailySkuBreakdown: true },

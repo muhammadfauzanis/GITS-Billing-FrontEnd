@@ -1,3 +1,5 @@
+// app/dashboard/usage/page.tsx
+
 'use client';
 
 import { useEffect, Suspense, useState, useMemo } from 'react';
@@ -20,8 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
 
 // Komponen untuk judul dinamis
 const PageTitle = () => {
@@ -65,33 +65,33 @@ function UsagePageContent() {
 
   const mainTab = searchParams.get('main_tab') || 'daily';
   const subTab = searchParams.get('sub_tab') || 'service';
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     if (!selectedClientId) return;
 
-    const fetchData = async () => {
-      if (mainTab === 'daily') {
-        await Promise.all([
-          fetchDailyData(),
-          fetchDailyProjectTrend(),
-          fetchDailySkuBreakdown(),
-          fetchDailySkuTrend(),
-          fetchUsageData({
-            month: dailyFilters.month!,
-            year: dailyFilters.year!,
-          }),
-        ]);
-      } else if (mainTab === 'monthly') {
-        await fetchUsageData();
-      } else if (mainTab === 'yearly') {
-        await fetchYearlyUsageData({ months: 12 });
+    if (mainTab === 'daily') {
+      if (subTab === 'service') {
+        fetchDailyData(dailyFilters);
+        fetchUsageData({
+          month: dailyFilters.month!,
+          year: dailyFilters.year!,
+        });
+      } else if (subTab === 'project') {
+        fetchDailyProjectTrend(dailyFilters);
+        fetchUsageData({
+          month: dailyFilters.month!,
+          year: dailyFilters.year!,
+        });
+      } else if (subTab === 'sku') {
+        fetchDailySkuTrend(dailyFilters);
+        fetchDailySkuBreakdown(dailyFilters);
       }
-      if (isInitialLoad) setIsInitialLoad(false);
-    };
-
-    fetchData();
-  }, [selectedClientId, mainTab, dailyFilters, monthlyFilters]);
+    } else if (mainTab === 'monthly') {
+      fetchUsageData(monthlyFilters);
+    } else if (mainTab === 'yearly') {
+      fetchYearlyUsageData({ months: 12 });
+    }
+  }, [selectedClientId, mainTab, subTab, dailyFilters, monthlyFilters]);
 
   const handleMainTabChange = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -138,17 +138,6 @@ function UsagePageContent() {
             penggunaan.
           </AlertDescription>
         </Alert>
-      </div>
-    );
-  }
-
-  if (isInitialLoad && Object.values(loading).some((v) => v)) {
-    return (
-      <div className="space-y-6">
-        <PageTitle />
-        <div className="flex h-[calc(100vh-12rem)] w-full items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
       </div>
     );
   }
@@ -231,7 +220,6 @@ function UsagePageContent() {
             </div>
           ) : (
             <>
-              {/* FIX: Tambahkan mt-6 (margin-top) untuk memberi jarak */}
               <TabsContent value="daily" className="mt-2">
                 <Tabs value={subTab} onValueChange={handleSubTabChange}>
                   <TabsList>
@@ -275,7 +263,7 @@ function UsagePageContent() {
                         />
                       ) : (
                         <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.``
+                          Data tidak tersedia.
                         </p>
                       )}
                     </TabsContent>
@@ -330,7 +318,6 @@ function UsagePageContent() {
                 </Tabs>
               </TabsContent>
 
-              {/* FIX: Tambahkan mt-6 (margin-top) untuk memberi jarak */}
               <TabsContent value="yearly" className="mt-6">
                 {yearlyUsageData ? (
                   <BillingYearlyChart data={yearlyUsageData} showAll={true} />
