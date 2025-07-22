@@ -1,6 +1,6 @@
 import type { AppUser } from '../auth';
-
 import type { DailyFilterParams } from '../api/billingDaily';
+import type { Invoice } from '../api/invoices';
 
 export interface Client {
   id: string;
@@ -29,7 +29,7 @@ export interface ClientSlice {
   dailyFilters: DailyFilterParams;
   monthlyFilters: UsageFilters;
   error: string | null;
-  settingsData: BudgetSettings | null; // <-- FIX: Gunakan tipe yang benar
+  settingsData: BudgetSettings | null;
   loading: {
     dashboard: boolean;
     usage: boolean;
@@ -41,6 +41,7 @@ export interface ClientSlice {
     dailyProjectTrend: boolean;
     dailySkuTrend: boolean;
     dailySkuBreakdown: boolean;
+    invoices: boolean;
   };
   initializeDashboard: (user: AppUser) => void;
   setClients: (clients: Client[]) => void;
@@ -86,8 +87,14 @@ export interface YearlySlice {
   fetchYearlySummaryData: (filters: { year: number }) => Promise<void>;
 }
 
+export interface InvoiceSlice {
+  invoices: Invoice[];
+  fetchInvoices: () => Promise<void>;
+}
+
 // Gabungkan semua slice menjadi satu state utama
 export type DashboardState = ClientSlice &
   DailySlice &
   MonthlySlice &
-  YearlySlice;
+  YearlySlice &
+  InvoiceSlice;
