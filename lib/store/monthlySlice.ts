@@ -22,7 +22,6 @@ export const createMonthlySlice: StateCreator<
   usageData: null,
   projectDetailData: null,
 
-  // --- ACTIONS ---
   fetchDashboardData: async () => {
     const { selectedClientId } = get();
     if (!selectedClientId) return;
@@ -62,8 +61,11 @@ export const createMonthlySlice: StateCreator<
   },
 
   fetchUsageData: async (filters) => {
-    const { selectedClientId, monthlyFilters } = get();
+    const { selectedClientId, monthlyFilters, usageData } = get();
+    // Caching: Hanya fetch jika data belum ada atau jika ada filter baru
+    if (usageData && !filters) return;
     if (!selectedClientId) return;
+
     const finalFilters = filters || monthlyFilters;
     set((state) => ({
       loading: { ...state.loading, usage: true },

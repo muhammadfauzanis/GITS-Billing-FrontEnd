@@ -1,9 +1,7 @@
-// lib/store/clientSlice.ts
-
 import { StateCreator } from 'zustand';
 import { DashboardState, ClientSlice, Client, BudgetSettings } from './types';
 import type { AppUser } from '../auth';
-import { getBudgetSettings, updateBudgetSettings } from '../api'; // Pastikan path import benar
+import { getBudgetSettings, updateBudgetSettings } from '../api';
 
 const now = new Date();
 
@@ -31,9 +29,9 @@ export const createClientSlice: StateCreator<
     dailyProjectTrend: true,
     dailySkuTrend: true,
     dailySkuBreakdown: true,
+    invoices: true,
   },
 
-  // --- ACTIONS ---
   initializeDashboard: (user: AppUser) => {
     if (user.role !== 'admin' && user.clientId) {
       set({ selectedClientId: user.clientId });

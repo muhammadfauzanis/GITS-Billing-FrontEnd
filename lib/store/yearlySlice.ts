@@ -14,8 +14,10 @@ export const createYearlySlice: StateCreator<
 
   // --- ACTIONS ---
   fetchYearlyUsageData: async (filters) => {
-    const { selectedClientId } = get();
+    const { selectedClientId, yearlyUsageData } = get();
+    if (yearlyUsageData) return;
     if (!selectedClientId) return;
+
     set((state) => ({
       loading: { ...state.loading, yearlyUsage: true },
       error: null,
