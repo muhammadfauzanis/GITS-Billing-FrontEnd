@@ -50,9 +50,9 @@ interface BreakdownRow {
   skuId: string;
   usage: string;
   cost: string;
-  discounts: string;
-  promotions: string;
-  subtotal: string;
+  // discounts: string;
+  // promotions: string;
+  // subtotal: string;
   rawSubtotal: number;
 }
 
@@ -354,14 +354,14 @@ export function BillingDailySkuBreakdown({
                   <TableHead>SKU ID</TableHead>
                   <TableHead>Usage</TableHead>
                   <TableHead className="text-right">Cost</TableHead>
-                  <TableHead className="text-right">Discounts</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
+                  {/* <TableHead className="text-right">Discounts</TableHead>
+                  <TableHead className="text-right">Subtotal</TableHead> */}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tableData.length > 0 ? (
-                  tableData.map((item) => (
-                    <TableRow key={item.skuId}>
+                  tableData.map((item, index) => (
+                    <TableRow key={`${item.skuId}-${index}`}>
                       <TableCell className="font-medium max-w-[350px] truncate">
                         <div className="flex items-center gap-2">
                           <div
@@ -378,12 +378,12 @@ export function BillingDailySkuBreakdown({
                       <TableCell>{item.skuId}</TableCell>
                       <TableCell>{item.usage}</TableCell>
                       <TableCell className="text-right">{item.cost}</TableCell>
-                      <TableCell className="text-right">
+                      {/* <TableCell className="text-right">
                         {item.discounts}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {item.subtotal}
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   ))
                 ) : (

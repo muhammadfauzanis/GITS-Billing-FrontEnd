@@ -1,8 +1,6 @@
-// app/dashboard/usage/page.tsx
-
 'use client';
 
-import { useEffect, Suspense, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -23,7 +21,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Komponen untuk judul dinamis
+function areFiltersEqual(a: any, b: any) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 const PageTitle = () => {
   const { clientName } = useDashboardStore();
   return (
@@ -43,7 +44,6 @@ function UsagePageContent() {
 
   const {
     selectedClientId,
-    error,
     loading,
     dailyFilters,
     monthlyFilters,
@@ -65,33 +65,84 @@ function UsagePageContent() {
 
   const mainTab = searchParams.get('main_tab') || 'daily';
   const subTab = searchParams.get('sub_tab') || 'service';
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+
+  const fetchedTabsRef = useRef({
+    daily: { service: false, project: false, sku: false },
+    monthly: false,
+    yearly: false,
+  });
+
+  const prevDailyFiltersRef = useRef(dailyFilters);
+  const prevMonthlyFiltersRef = useRef(monthlyFilters);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (!selectedClientId) return;
+    if (!selectedClientId || fetchingRef.current) return;
 
-    if (mainTab === 'daily') {
-      if (subTab === 'service') {
-        fetchDailyData(dailyFilters);
-        fetchUsageData({
-          month: dailyFilters.month!,
-          year: dailyFilters.year!,
-        });
-      } else if (subTab === 'project') {
-        fetchDailyProjectTrend(dailyFilters);
-        fetchUsageData({
-          month: dailyFilters.month!,
-          year: dailyFilters.year!,
-        });
-      } else if (subTab === 'sku') {
-        fetchDailySkuTrend(dailyFilters);
-        fetchDailySkuBreakdown(dailyFilters);
+    const fetchData = async () => {
+      fetchingRef.current = true;
+      setIsFetching(true);
+
+      const dailyFiltersChanged = !areFiltersEqual(
+        prevDailyFiltersRef.current,
+        dailyFilters
+      );
+      const monthlyFiltersChanged = !areFiltersEqual(
+        prevMonthlyFiltersRef.current,
+        monthlyFilters
+      );
+
+      if (mainTab === 'daily') {
+        const fetched =
+          fetchedTabsRef.current.daily[subTab as 'service' | 'project' | 'sku'];
+
+        if (!fetched || dailyFiltersChanged) {
+          if (subTab === 'service') {
+            await fetchDailyData(dailyFilters);
+            await fetchUsageData({
+              month: dailyFilters.month!,
+              year: dailyFilters.year!,
+            });
+          } else if (subTab === 'project') {
+            await fetchDailyProjectTrend(dailyFilters);
+            await fetchUsageData({
+              month: dailyFilters.month!,
+              year: dailyFilters.year!,
+            });
+          } else if (subTab === 'sku') {
+            await fetchDailySkuTrend(dailyFilters);
+            await fetchDailySkuBreakdown(dailyFilters);
+          }
+
+          fetchedTabsRef.current.daily[
+            subTab as 'service' | 'project' | 'sku'
+          ] = true;
+          prevDailyFiltersRef.current = dailyFilters;
+        }
       }
-    } else if (mainTab === 'monthly') {
-      fetchUsageData(monthlyFilters);
-    } else if (mainTab === 'yearly') {
-      fetchYearlyUsageData({ months: 12 });
-    }
-  }, [selectedClientId, mainTab, subTab, dailyFilters, monthlyFilters]);
+
+      if (mainTab === 'monthly') {
+        if (!fetchedTabsRef.current.monthly || monthlyFiltersChanged) {
+          await fetchUsageData(monthlyFilters);
+          fetchedTabsRef.current.monthly = true;
+          prevMonthlyFiltersRef.current = monthlyFilters;
+        }
+      }
+
+      if (mainTab === 'yearly' && !fetchedTabsRef.current.yearly) {
+        await fetchYearlyUsageData({ months: 12 });
+        fetchedTabsRef.current.yearly = true;
+      }
+
+      setHasFetchedOnce(true);
+      setIsFetching(false);
+      fetchingRef.current = false;
+    };
+
+    fetchData();
+  }, [mainTab, subTab, selectedClientId, dailyFilters, monthlyFilters]);
 
   const handleMainTabChange = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -142,13 +193,16 @@ function UsagePageContent() {
     );
   }
 
-  const isLoadingData =
-    loading.daily ||
-    loading.usage ||
-    loading.yearlyUsage ||
-    loading.dailyProjectTrend ||
-    loading.dailySkuBreakdown ||
-    loading.dailySkuTrend;
+  if (!hasFetchedOnce || isFetching) {
+    return (
+      <div className="space-y-6">
+        <PageTitle />
+        <div className="flex h-[calc(100vh-12rem)] w-full items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,11 +228,7 @@ function UsagePageContent() {
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((m) => (
-                    <SelectItem
-                      key={m.value}
-                      value={m.value}
-                      className="cursor-pointer"
-                    >
+                    <SelectItem key={m.value} value={m.value}>
                       {m.label}
                     </SelectItem>
                   ))}
@@ -214,121 +264,113 @@ function UsagePageContent() {
         </TabsList>
 
         <div className="pt-4 min-h-[450px]">
-          {isLoadingData ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : (
-            <>
-              <TabsContent value="daily" className="mt-2">
-                <Tabs value={subTab} onValueChange={handleSubTabChange}>
-                  <TabsList>
-                    <TabsTrigger value="service">Services</TabsTrigger>
-                    <TabsTrigger value="project">Projects</TabsTrigger>
-                    <TabsTrigger value="sku">SKU</TabsTrigger>
-                  </TabsList>
-                  <div className="pt-4">
-                    <TabsContent value="service">
-                      {dailyData && usageData?.serviceBreakdown ? (
-                        <BillingDailyServiceBreakdown
-                          dailyData={dailyData}
-                          monthlyData={usageData.serviceBreakdown}
-                          showAll={true}
-                        />
-                      ) : (
-                        <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.
-                        </p>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="project">
-                      {dailyProjectTrendData && usageData?.projectBreakdown ? (
-                        <BillingDailyProjectBreakdown
-                          dailyData={dailyProjectTrendData}
-                          monthlyData={usageData.projectBreakdown}
-                          showAll={true}
-                        />
-                      ) : (
-                        <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.
-                        </p>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="sku">
-                      {dailySkuTrendData && dailySkuBreakdownData ? (
-                        <BillingDailySkuBreakdown
-                          trendData={dailySkuTrendData}
-                          breakdownData={dailySkuBreakdownData}
-                          showAll={true}
-                        />
-                      ) : (
-                        <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.
-                        </p>
-                      )}
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </TabsContent>
+          <TabsContent value="daily" className="mt-2">
+            <Tabs value={subTab} onValueChange={handleSubTabChange}>
+              <TabsList>
+                <TabsTrigger value="service">Services</TabsTrigger>
+                <TabsTrigger value="project">Projects</TabsTrigger>
+                <TabsTrigger value="sku">SKU</TabsTrigger>
+              </TabsList>
+              <div className="pt-4">
+                <TabsContent value="service">
+                  {dailyData && usageData?.serviceBreakdown ? (
+                    <BillingDailyServiceBreakdown
+                      dailyData={dailyData}
+                      monthlyData={usageData.serviceBreakdown}
+                      showAll
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="project">
+                  {dailyProjectTrendData && usageData?.projectBreakdown ? (
+                    <BillingDailyProjectBreakdown
+                      dailyData={dailyProjectTrendData}
+                      monthlyData={usageData.projectBreakdown}
+                      showAll
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="sku">
+                  {dailySkuTrendData && dailySkuBreakdownData ? (
+                    <BillingDailySkuBreakdown
+                      trendData={dailySkuTrendData}
+                      breakdownData={dailySkuBreakdownData}
+                      showAll
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
+          </TabsContent>
 
-              <TabsContent value="monthly" className="mt-6">
-                <Tabs value={subTab} onValueChange={handleSubTabChange}>
-                  <TabsList>
-                    <TabsTrigger value="service">Services</TabsTrigger>
-                    <TabsTrigger value="project">Projects</TabsTrigger>
-                  </TabsList>
-                  <div className="pt-4">
-                    <TabsContent value="service">
-                      {usageData?.serviceBreakdown?.breakdown?.length > 0 ? (
-                        <BillingServiceBreakdown
-                          data={usageData.serviceBreakdown}
-                          showAll={true}
-                          currentMonthLabel={
-                            months.find(
-                              (m) => m.value === `${monthlyFilters.month}`
-                            )?.label
-                          }
-                          selectedYear={monthlyFilters.year}
-                        />
-                      ) : (
-                        <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.
-                        </p>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="project">
-                      {usageData?.projectBreakdown?.breakdown?.length > 0 ? (
-                        <BillingProjectBreakdown
-                          data={usageData.projectBreakdown}
-                          showAll={true}
-                          currentMonthLabel={
-                            months.find(
-                              (m) => m.value === `${monthlyFilters.month}`
-                            )?.label
-                          }
-                          selectedYear={monthlyFilters.year}
-                        />
-                      ) : (
-                        <p className="text-center text-muted-foreground py-10">
-                          Data tidak tersedia.
-                        </p>
-                      )}
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </TabsContent>
+          <TabsContent value="monthly" className="mt-6">
+            <Tabs value={subTab} onValueChange={handleSubTabChange}>
+              <TabsList>
+                <TabsTrigger value="service">Services</TabsTrigger>
+                <TabsTrigger value="project">Projects</TabsTrigger>
+              </TabsList>
+              <div className="pt-4">
+                <TabsContent value="service">
+                  {usageData?.serviceBreakdown?.breakdown?.length > 0 ? (
+                    <BillingServiceBreakdown
+                      data={usageData.serviceBreakdown}
+                      showAll
+                      currentMonthLabel={
+                        months.find(
+                          (m) => m.value === `${monthlyFilters.month}`
+                        )?.label
+                      }
+                      selectedYear={monthlyFilters.year}
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="project">
+                  {usageData?.projectBreakdown?.breakdown?.length > 0 ? (
+                    <BillingProjectBreakdown
+                      data={usageData.projectBreakdown}
+                      showAll
+                      currentMonthLabel={
+                        months.find(
+                          (m) => m.value === `${monthlyFilters.month}`
+                        )?.label
+                      }
+                      selectedYear={monthlyFilters.year}
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
+          </TabsContent>
 
-              <TabsContent value="yearly" className="mt-6">
-                {yearlyUsageData ? (
-                  <BillingYearlyChart data={yearlyUsageData} showAll={true} />
-                ) : (
-                  <p className="text-center text-muted-foreground py-10">
-                    Data tidak tersedia.
-                  </p>
-                )}
-              </TabsContent>
-            </>
-          )}
+          <TabsContent value="yearly" className="mt-6">
+            {yearlyUsageData ? (
+              <BillingYearlyChart data={yearlyUsageData} showAll />
+            ) : (
+              <p className="text-center text-muted-foreground py-10">
+                Data tidak tersedia.
+              </p>
+            )}
+          </TabsContent>
         </div>
       </Tabs>
     </div>
