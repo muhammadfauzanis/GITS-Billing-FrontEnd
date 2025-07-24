@@ -1,215 +1,156 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-// import { useAuth } from "@/context/auth"
 import { useAuth } from '@/lib/auth';
-// import { useRouter } from 'next/router';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
+
+type Message = {
+  id: string;
+  role: 'user' | 'agent';
+  text: string;
+};
+
+const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL!;
 
 export default function ChatbotPage() {
   const [input, setInput] = useState('');
-  const [service, setService] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [selectedTool, setSelectedTool] = useState<'summarize' | 'recommend' | 'summary' | null>(null);
-  const [messages, setMessages] = useState<{ from: 'user' | 'bot', text: string }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const { session, clearSession } = useAuth();
   const user: User | undefined = session?.user;
+  const userId = user?.id || '';
   const router = useRouter();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    const existing = localStorage.getItem('session_id');
+    const generated = existing || uuidv4();
+    if (!existing) localStorage.setItem('session_id', generated);
+    setSessionId(generated);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // if (!input.trim() || !selectedTool) return;
-    if (!selectedTool) return;
+  useEffect(() => {
+    const createSession = async () => {
+      if (!userId || !sessionId) return;
+      if (localStorage.getItem('session_created') === sessionId) return;
 
-    if (selectedTool === 'recommend') {
-      if (!service.trim() || !projectId.trim()) return;
-    } else {
-      if (!input.trim()) return;
-    }
+      try {
+        await axios.post(
+          `${baseUrl}/apps/billing_agent/users/${userId}/sessions/${sessionId}`,
+          {},
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        console.log("Session created:", sessionId);
+        localStorage.setItem('session_created', sessionId);
+      } catch (error: any) {
+        if (error.response?.status === 409) {
+          console.log("Session already exists");
+        } else {
+          console.error("Failed to create session:", error.message);
+        }
+      }
+    };
+    createSession();
+  }, [userId, sessionId]);
 
-    let userMessage = input;
+  const handleSend = async () => {
+    if (!input.trim() || !userId || !sessionId) return;
 
-    if (selectedTool === 'recommend') {
-      userMessage = `Rekomendasi untuk Service ${service} pada project ${projectId}`;
-    }
-
-    setMessages(prev => [...prev, { from: user ? 'user' : 'bot', text: userMessage }]);
+    const userMessage: Message = {
+      id: uuidv4(),
+      role: 'user',
+      text: input
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
     setLoading(true);
 
     try {
-      let endpoint = '';
-      let payload = {};
+        const payload = {
+        appName: "billing_agent",
+        sessionId,
+        userId,
+        newMessage: {
+          role: "user",
+          parts: [{ text: input }]
+        },
+        streaming: false
+      };
 
-      if (selectedTool === 'summarize') {
-        endpoint = '/tools/summarize_billing';
-        payload = { 
-          month: input, 
-          user_id: user.id 
-        };
-      } else if (selectedTool === 'recommend') {
-        endpoint = '/tools/recommend_service_usage';
-        payload = { 
-          gcp_services: service,
-          project_id: projectId,
-          user_id: user.id
-        };
-      } else if (selectedTool === 'summary') {
-        endpoint = '/tools/summary_detailed';
-        payload = {
-          month: input,
-          user_id: user.id,
-        };
-      }
+      const res = await axios.post(`${baseUrl}/run`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-      const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL!;
-      const res = await axios.post(`${baseUrl}${endpoint}`, payload);
-      const botResult = res.data?.result;
+      const data = res.data;
+      let replyText = "(no response)";
 
-      let botReply = '';
-      if (typeof botResult === 'string') {
-        botReply = botResult;
-      } else if (botResult?.report) {
-        botReply = botResult.report;
-      } else if (botResult?.recommendation) {
-        if (Array.isArray(botResult.recommendation)) {
-          botReply = botResult.recommendation.map((item: any) => (
-            `- SKU ${item.sku_description} (${item.sku_id})\n  - Usage: ${item.rata_rata_sekarang} ${item.usage_unit}\n  - Batas: ${item.saran_batas_usage}\n  - Hemat: ${item.estimasi_penghematan}`
-          )).join('\n\n');
-        } else {
-          botReply = JSON.stringify(botResult.recommendation);
+      for (let i = data.length - 1; i >= 0; i--) {
+        const entry = data[i];
+        const parts = entry?.content?.parts || [];
+        for (const part of parts) {
+          if (part.text) {
+            replyText = part.text;
+            break;
+          }
         }
-      } else if (botResult?.error) {
-        console.error('Tool error:', botResult.error);
-        botReply = `Error: ${botResult.error}`;
-      } else {
-        botReply = 'No valid response from agent';
+        if (replyText !== "(no response)") break;
       }
 
-      setMessages(prev => [...prev, { from: 'bot', text: botReply }]);
-    } catch (err: any) {
-      console.error('Request error:', err);
-      setMessages(prev => [...prev, { from: 'bot', text: 'Request Error: ' + err.message }]);
+      const agentMessage: Message = {
+        id: uuidv4(),
+        role: "agent",
+        text: replyText
+      };
+
+      setMessages((prev) => [...prev, agentMessage]);
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          role: "agent",
+          text: "Error processing your request."
+        }
+      ]);
     } finally {
       setLoading(false);
-      setInput('');
     }
   };
 
   return (
-    <div className="flex flex-col bg-white text-blue-900 rounded-xl overflow-hidden w-full max-w-3xl h-[90vh] shadow-xl">
-
-      {/* Title */}
-      <div className="text-center px-4 pt-4">
-        <h1 className="text-2xl font-bold text-blue-700">Billing AI Assistant</h1>
-      </div>
-
-      {/* Tool Selector */}
-      <div className="flex justify-center gap-4 px-4 py-3">
-        {['summarize', 'recommend', 'summary'].map((tool) => (
-          <button
-            key={tool}
-            onClick={() => setSelectedTool(tool as typeof selectedTool)}
-            className={`px-4 py-2 rounded-full border transition ${
-              selectedTool === tool
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-blue-600 border-blue-400 hover:bg-blue-100'
-            }`}
-          >
-            {{
-              summarize: 'Summarize Billing',
-              recommend: 'Cost Recommendation',
-              summary: 'Summary Per Service',
-            }[tool]}
-          </button>
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">Chat with Agent</h1>
+      <div className="mb-4 space-y-2 max-h-96 overflow-y-auto border p-4 rounded">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`text-sm ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+            <span className="block px-2 py-1 rounded bg-gray-100 inline-block">
+              <strong>{msg.role === 'user' ? 'You' : 'Agent'}:</strong> {msg.text}
+            </span>
+          </div>
         ))}
       </div>
-
-      {/* Chat Content */}
-      <div className="flex-1 px-4 pb-2 overflow-hidden flex flex-col items-center">
-        <div className="w-full max-w-2xl flex-1 bg-blue-50 rounded-lg shadow p-4 overflow-y-auto">
-          {messages.map((msg, idx) => (
-            <div 
-            key={idx} 
-            className={`mb-3 flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`px-4 py-2 rounded-lg max-w-[80%] ${
-                  msg.from === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-blue-800 border border-blue-100'
-                }`}
-              >
-                <pre className="whitespace-pre-wrap font-sans">{msg.text}</pre>
-              </div>
-            </div>
-          ))}
-          {loading && <p className="italic text-blue-500">AI is thinking...</p>}
-        </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          className="flex-grow border px-3 py-2 rounded"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+        />
+        <button
+          onClick={handleSend}
+          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+          disabled={loading || !input.trim()}
+        >
+          {loading ? 'Sending...' : 'Send'}
+        </button>
       </div>
-
-      {/* Form Input */}
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-2xl mx-auto px-4 py-3 bg-white border-t border-blue-200"
-      >
-        <div className="flex flex-col gap-2">
-          {(selectedTool === 'summarize' || selectedTool === 'summary') && (
-            <input
-              type="text"
-              className="p-2 border border-blue-300 rounded"
-              placeholder="Enter month (e.g. 2025-06)"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              disabled={loading}
-            />
-          )}
-
-          {selectedTool === 'recommend' && (
-            <>
-              <input
-                type="text"
-                className="p-2 border border-blue-300 rounded"
-                placeholder="Enter GCP Service Name (e.g. Compute Engine)"
-                value={service}
-                onChange={e => setService(e.target.value)}
-                disabled={loading}
-              />
-              <input
-                type="text"
-                className="p-2 border border-blue-300 rounded"
-                placeholder="Enter Project ID (e.g. bahanalink)"
-                value={projectId}
-                onChange={e => setProjectId(e.target.value)}
-                disabled={loading}
-              />
-            </>
-          )}
-
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
-            disabled={loading || !selectedTool}
-          >
-            Send
-          </button>
-        </div>
-      </form>
     </div>
   );
 }
