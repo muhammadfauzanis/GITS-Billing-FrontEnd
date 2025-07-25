@@ -35,6 +35,17 @@ export default function ChatbotPage() {
   }, []);
 
   useEffect(() => {
+    if (sessionId && messages.length === 0) {
+      const greeting: Message = {
+        id: uuidv4(),
+        role: 'agent',
+        text: 'Halo! Saya Billing Agent yang siap membantu Anda. Silakan ketik pertanyaan Anda.'
+      };
+      setMessages([greeting]);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
     const createSession = async () => {
       if (!userId || !sessionId) return;
       if (localStorage.getItem('session_created') === sessionId) return;
@@ -124,32 +135,52 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Chat with Billing AI</h1>
-      <div className="mb-4 space-y-2 max-h-96 overflow-y-auto border p-4 rounded">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`text-sm ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-            <span className="block px-2 py-1 rounded bg-gray-100 inline-block">
-              <strong>{msg.role === 'user' ? 'You' : 'Agent'}:</strong> {msg.text}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          className="flex-grow border px-3 py-2 rounded"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-        />
-        <button
-          onClick={handleSend}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-          disabled={loading || !input.trim()}
-        >
-          {loading ? 'Sending...' : 'Send'}
-        </button>
+    <div className="min-h-screen bg-white text-gray-900 px-6 py-8 flex flex-col items-center font-sans">
+      <div className="w-full max-w-2xl">
+        <h1 className="text-2xl font-semibold mb-6 text-center tracking-tight">
+          AI Billing Assistant
+        </h1>
+
+        <div className="flex flex-col gap-2 bg-gray-100 p-4 rounded-xl shadow max-h-[400px] overflow-y-auto mb-4 border">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[75%] px-4 py-2 rounded-xl text-sm whitespace-pre-line shadow-sm
+                ${msg.role === 'user' 
+                  ? 'bg-blue-500 text-white rounded-br-none' 
+                  : 'bg-white text-gray-800 border border-gray-300 rounded-bl-none'}`}>
+                {msg.text}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="text-sm text-gray-500 italic animate-pulse">Agent is typing...</div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-grow px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Ask anything about your billing..."
+          />
+
+          <button
+            onClick={handleSend}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 transition rounded-lg text-white disabled:opacity-50"
+            disabled={loading || !input.trim()}
+          >
+            {loading ? '...' : 'Send'}
+          </button>
+        </div>
       </div>
     </div>
   );
