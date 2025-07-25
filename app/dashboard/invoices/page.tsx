@@ -237,10 +237,10 @@ export default function InvoicesPage() {
               Riwayat tagihan untuk {clientName || '...'}
             </p>
           </div>
-          <Button disabled={invoices.length === 0}>
+          {/* <Button disabled={invoices.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Ekspor
-          </Button>
+          </Button> */}
         </div>
 
         <Card>

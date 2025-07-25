@@ -16,11 +16,11 @@ export default function DashboardLayout({
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/');
-    }
-  }, [user, isLoading, router]);
+  // useEffect(() => {
+  //   if (!isLoading && !user) {
+  //     router.push('/');
+  //   }
+  // }, [user, isLoading, router]);
   if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">

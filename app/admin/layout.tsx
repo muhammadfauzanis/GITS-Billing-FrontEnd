@@ -16,15 +16,15 @@ export default function AdminLayout({
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push('/');
-      } else if (user.role !== 'admin') {
-        router.push('/dashboard');
-      }
-    }
-  }, [user, isLoading, router]);
+  // useEffect(() => {
+  //   if (!isLoading) {
+  //     if (!user) {
+  //       router.push('/');
+  //     } else if (user.role !== 'admin') {
+  //       router.push('/dashboard');
+  //     }
+  //   }
+  // }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
