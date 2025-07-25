@@ -12,12 +12,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { DashboardSidebar } from './dashboard-sidebar';
 import { useAuth } from '@/lib/auth';
 
 export function DashboardHeader() {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const displayUser = user;
 
   const handleLogout = async () => {
@@ -31,24 +39,35 @@ export function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-white px-4 md:px-6">
-      <div className="flex items-center gap-2 md:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          <Menu className="h-5 w-5" />
-          <span className="sr-only">Toggle menu</span>
-        </Button>
-      </div>
-
       <div className="flex items-center gap-2">
+        <div className="md:hidden">
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Menu Navigasi</SheetTitle>
+                <SheetDescription>
+                  Daftar tautan untuk navigasi dashboard
+                </SheetDescription>
+              </SheetHeader>
+              <DashboardSidebar
+                isMobile={true}
+                onLinkClick={() => setIsMobileMenuOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
         <Link href="/dashboard" className="flex items-center gap-2 font-bold">
-          <span className="text-lg">GCP Billing Dashboard</span>
+          <span className="text-md md:text-lg">GCP Billing Dashboard</span>
         </Link>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         <Button variant="ghost" size="icon" className="rounded-full">
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>

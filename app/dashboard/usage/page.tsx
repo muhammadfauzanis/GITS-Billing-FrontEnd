@@ -29,8 +29,10 @@ const PageTitle = () => {
   const { clientName } = useDashboardStore();
   return (
     <div>
-      <h1 className="text-3xl font-bold tracking-tight">Penggunaan GCP</h1>
-      <p className="text-muted-foreground">
+      <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+        Penggunaan GCP
+      </h1>
+      <p className="text-sm text-muted-foreground">
         Detail penggunaan untuk {clientName || 'memuat...'}
       </p>
     </div>
@@ -142,7 +144,19 @@ function UsagePageContent() {
     };
 
     fetchData();
-  }, [mainTab, subTab, selectedClientId, dailyFilters, monthlyFilters]);
+  }, [
+    mainTab,
+    subTab,
+    selectedClientId,
+    dailyFilters,
+    monthlyFilters,
+    fetchDailyData,
+    fetchUsageData,
+    fetchDailyProjectTrend,
+    fetchDailySkuTrend,
+    fetchDailySkuBreakdown,
+    fetchYearlyUsageData,
+  ]);
 
   const handleMainTabChange = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -208,7 +222,7 @@ function UsagePageContent() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start justify-between gap-4">
         <PageTitle />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {mainTab === 'daily' && (
             <TimeRangeFilter
               initialFilters={dailyFilters}
@@ -216,14 +230,14 @@ function UsagePageContent() {
             />
           )}
           {mainTab === 'monthly' && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Select
                 value={String(monthlyFilters.month)}
                 onValueChange={(v) =>
                   setMonthlyFilters({ ...monthlyFilters, month: Number(v) })
                 }
               >
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -240,7 +254,7 @@ function UsagePageContent() {
                   setMonthlyFilters({ ...monthlyFilters, year: Number(v) })
                 }
               >
-                <SelectTrigger className="w-[100px]">
+                <SelectTrigger className="w-full sm:w-[100px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -257,11 +271,26 @@ function UsagePageContent() {
       </div>
 
       <Tabs value={mainTab} onValueChange={handleMainTabChange}>
-        <TabsList className="grid w-full grid-cols-3 md:w-auto">
+        {/* Desktop Tabs */}
+        <TabsList className="hidden md:grid w-full grid-cols-3">
           <TabsTrigger value="daily">Daily Overview</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
           <TabsTrigger value="yearly">Year To Date Overview</TabsTrigger>
         </TabsList>
+
+        {/* Mobile Dropdown */}
+        <div className="md:hidden">
+          <Select value={mainTab} onValueChange={handleMainTabChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih Tampilan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily Overview</SelectItem>
+              <SelectItem value="monthly">Monthly Overview</SelectItem>
+              <SelectItem value="yearly">Year To Date Overview</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="pt-4 min-h-[450px]">
           <TabsContent value="daily" className="mt-2">
@@ -317,7 +346,7 @@ function UsagePageContent() {
 
           <TabsContent value="monthly" className="mt-6">
             <Tabs value={subTab} onValueChange={handleSubTabChange}>
-              <TabsList>
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="service">Services</TabsTrigger>
                 <TabsTrigger value="project">Projects</TabsTrigger>
               </TabsList>

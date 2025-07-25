@@ -147,20 +147,6 @@ export default function ProjectDetailPage() {
         </Alert>
       )}
 
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>Total Biaya</CardTitle>
-          <CardDescription>
-            Total biaya untuk bulan {currentMonthLabel} {selectedYear}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold">
-            {projectData?.total?.value || 'Rp 0'}
-          </div>
-        </CardContent>
-      </Card> */}
-
       {projectData?.breakdown && projectData.breakdown.length > 0 ? (
         <BillingServiceBreakdown
           data={projectData}

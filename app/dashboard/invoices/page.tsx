@@ -131,70 +131,78 @@ export default function InvoicesPage() {
     }
 
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>No. Invoice</TableHead>
-            <TableHead>Periode</TableHead>
-            <TableHead>Jatuh Tempo</TableHead>
-            <TableHead>Jumlah</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Aksi</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {invoices.map((invoice) => (
-            <TableRow key={invoice.id}>
-              <TableCell className="font-medium">
-                {invoice.invoiceNumber}
-              </TableCell>
-              <TableCell>{invoice.period}</TableCell>
-              <TableCell>{invoice.dueDate}</TableCell>
-              <TableCell>{invoice.total}</TableCell>
-              <TableCell>
-                <div
-                  className={cn(
-                    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize',
-                    statusStyles[invoice.status] || statusStyles.failed
-                  )}
-                >
-                  {invoice.status}
-                </div>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleView(invoice.id)}
-                    disabled={isActionLoading === invoice.id}
-                  >
-                    {isActionLoading === invoice.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                    <span className="sr-only">Lihat</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDownload(invoice)}
-                    disabled={isActionLoading === invoice.id}
-                  >
-                    {isActionLoading === invoice.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                    <span className="sr-only">Unduh</span>
-                  </Button>
-                </div>
-              </TableCell>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>No. Invoice</TableHead>
+              <TableHead>Periode</TableHead>
+              <TableHead>Jatuh Tempo</TableHead>
+              <TableHead>Jumlah</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {invoices.map((invoice) => (
+              <TableRow key={invoice.id}>
+                <TableCell className="font-medium whitespace-nowrap">
+                  {invoice.invoiceNumber}
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {invoice.period}
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {invoice.dueDate}
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {invoice.total}
+                </TableCell>
+                <TableCell>
+                  <div
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize',
+                      statusStyles[invoice.status] || statusStyles.failed
+                    )}
+                  >
+                    {invoice.status}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleView(invoice.id)}
+                      disabled={isActionLoading === invoice.id}
+                    >
+                      {isActionLoading === invoice.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">Lihat</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDownload(invoice)}
+                      disabled={isActionLoading === invoice.id}
+                    >
+                      {isActionLoading === invoice.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">Unduh</span>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     );
   };
 
@@ -204,7 +212,7 @@ export default function InvoicesPage() {
         open={!!viewingUrl}
         onOpenChange={(open) => !open && setViewingUrl(null)}
       >
-        <DialogContent className="max-w-4xl w-full h-[90vh] p-4 bg-transparent border-0 shadow-none focus:outline-none">
+        <DialogContent className="max-w-4xl w-full h-[90vh] p-2 md:p-4 bg-transparent border-0 shadow-none focus:outline-none">
           <Card className="w-full h-full relative flex flex-col">
             <DialogTitle className="sr-only">Pratinjau Tagihan</DialogTitle>
             <DialogClose asChild>
@@ -230,17 +238,15 @@ export default function InvoicesPage() {
       </Dialog>
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Tagihan</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              Tagihan
+            </h1>
+            <p className="text-sm text-muted-foreground">
               Riwayat tagihan untuk {clientName || '...'}
             </p>
           </div>
-          {/* <Button disabled={invoices.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Ekspor
-          </Button> */}
         </div>
 
         <Card>

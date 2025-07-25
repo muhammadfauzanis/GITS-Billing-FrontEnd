@@ -28,17 +28,27 @@ const sidebarItems = [
   },
 ];
 
-export function DashboardSidebar() {
+export function DashboardSidebar({
+  className,
+  isMobile = false,
+  onLinkClick,
+}: {
+  className?: string;
+  isMobile?: boolean;
+  onLinkClick?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 flex-col border-r bg-white md:flex">
-      <div className="flex flex-col gap-1 p-4">
+    // Hapus `h-full` dari sini agar tingginya diatur otomatis oleh flexbox
+    <aside className={cn('flex w-64 flex-col border-r bg-white', className)}>
+      <div className={cn('flex flex-col gap-1 p-4', isMobile && 'pt-14')}>
         <nav className="grid gap-1">
           {sidebarItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              onClick={onLinkClick}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium',
                 pathname === item.href

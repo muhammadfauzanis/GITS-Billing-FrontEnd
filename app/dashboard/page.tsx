@@ -12,7 +12,14 @@ import { BillingProjectBreakdown } from '@/components/billing-project-breakdown'
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
 import { useDashboardStore } from '@/lib/store';
 import { getClients } from '@/lib/api/index';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'; // TabsContent tidak lagi kita butuhkan di sini
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { BillingYearlyChart } from '@/components/billing-yearly-chart';
 import { BillingDailyServiceBreakdown } from '@/components/billing-daily-service-breakdown';
 import { BillingDailyProjectBreakdown } from '@/components/billing-daily-project-breakdown';
@@ -50,10 +57,8 @@ export default function DashboardPage() {
     currentMonth - 1
   ).toLocaleString('id-ID', { month: 'long' });
 
-  // START: Perubahan State untuk Tab Bertingkat
-  const [primaryTab, setPrimaryTab] = useState('monthly'); // 'daily', 'monthly', 'yearly'
-  const [secondaryTab, setSecondaryTab] = useState('service'); // 'service', 'project', 'sku'
-  // END: Perubahan State
+  const [primaryTab, setPrimaryTab] = useState('monthly');
+  const [secondaryTab, setSecondaryTab] = useState('service');
 
   const { summaryData, serviceBreakdown, projectBreakdownData, projects } =
     dashboardData || {};
@@ -71,8 +76,6 @@ export default function DashboardPage() {
   }, [user, initializeDashboard, setClients]);
 
   useEffect(() => {
-    // Data fetching logic Anda saat ini sudah mengambil semua data di awal,
-    // jadi kita tidak perlu mengubahnya untuk sekarang.
     if (selectedClientId) {
       fetchDashboardData();
       fetchYearlyUsageData({ months: 12 });
@@ -103,16 +106,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 relative min-h-screen pb-20">
+    <div className="space-y-4 md:space-y-6 relative min-h-screen pb-20">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             Dashboard Billing
           </h1>
           {clientName && (
-            <h3 className="text-lg font-semibold">{clientName}</h3>
+            <h3 className="text-md md:text-lg font-semibold">{clientName}</h3>
           )}
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Ringkasan penggunaan dan biaya GCP Anda
           </p>
         </div>
@@ -138,23 +141,34 @@ export default function DashboardPage() {
           ) : (
             <>
               {summaryData && <BillingOverview data={summaryData} />}
-
-              {/* START: Struktur Tab Baru */}
               <div className="space-y-4">
-                {/* Tab Utama */}
                 <Tabs
                   value={primaryTab}
                   onValueChange={setPrimaryTab}
                   className="w-full"
                 >
+                  {/* Tampilan Desktop: Tabs */}
                   <TabsList>
                     <TabsTrigger value="daily">Daily</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                     <TabsTrigger value="yearly">Year To Date</TabsTrigger>
                   </TabsList>
+
+                  {/* Tampilan Mobile: Dropdown */}
+                  <div className="md:hidden">
+                    <Select value={primaryTab} onValueChange={setPrimaryTab}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Tampilan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Year To Date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </Tabs>
 
-                {/* Sub-Navigasi, hanya muncul jika tab Harian aktif */}
                 {primaryTab === 'daily' && (
                   <Tabs
                     value={secondaryTab}
@@ -169,9 +183,7 @@ export default function DashboardPage() {
                   </Tabs>
                 )}
 
-                {/* Konten yang dirender secara kondisional */}
                 <div className="pt-4">
-                  {/* Tampilan Bulanan */}
                   {primaryTab === 'monthly' && (
                     <div className="grid gap-6 xl:grid-cols-2">
                       {projectBreakdownData?.breakdown?.length > 0 ? (
@@ -199,7 +211,6 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Tampilan Tahunan */}
                   {primaryTab === 'yearly' &&
                     (yearlyUsageData ? (
                       <BillingYearlyChart data={yearlyUsageData} />
@@ -209,7 +220,6 @@ export default function DashboardPage() {
                       </div>
                     ))}
 
-                  {/* Tampilan Harian */}
                   {primaryTab === 'daily' && (
                     <div>
                       {secondaryTab === 'service' &&
@@ -264,7 +274,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              {/* END: Struktur Tab Baru */}
 
               {projects && projects.length > 0 && (
                 <ProjectsList projects={projects} />
@@ -274,10 +283,9 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* Floating Chatbot Button & Modal */}
       <button
         onClick={() => setChatbotOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition"
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition"
         aria-label="Open Chatbot"
       >
         💬
