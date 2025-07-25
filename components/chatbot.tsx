@@ -125,7 +125,7 @@ export default function ChatbotPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Chat with Agent</h1>
+      <h1 className="text-xl font-bold mb-4">Chat with Billing AI</h1>
       <div className="mb-4 space-y-2 max-h-96 overflow-y-auto border p-4 rounded">
         {messages.map((msg) => (
           <div key={msg.id} className={`text-sm ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
