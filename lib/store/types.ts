@@ -18,8 +18,11 @@ export interface UsageFilters {
   year: number;
 }
 
-export interface ProjectDetailFilters extends UsageFilters {
-  projectId: string;
+export interface ProjectDetailData {
+  monthly: any | null;
+  dailyService: any | null;
+  dailySkuTrend: any | null;
+  dailySkuBreakdown: any | null;
 }
 
 export interface ClientSlice {
@@ -74,10 +77,15 @@ export interface DailySlice {
 export interface MonthlySlice {
   dashboardData: any | null;
   usageData: any | null;
-  projectDetailData: any | null;
+  projectDetailData: ProjectDetailData;
   fetchDashboardData: () => Promise<void>;
   fetchUsageData: (filters?: UsageFilters) => Promise<void>;
-  fetchProjectDetailData: (filters: ProjectDetailFilters) => Promise<void>;
+  fetchProjectDetailData: (
+    projectId: string,
+    filters: DailyFilterParams,
+    dataType: 'monthly' | 'daily'
+  ) => Promise<void>;
+  clearProjectDetailData: () => void;
 }
 
 export interface YearlySlice {
@@ -92,7 +100,6 @@ export interface InvoiceSlice {
   fetchInvoices: () => Promise<void>;
 }
 
-// Gabungkan semua slice menjadi satu state utama
 export type DashboardState = ClientSlice &
   DailySlice &
   MonthlySlice &

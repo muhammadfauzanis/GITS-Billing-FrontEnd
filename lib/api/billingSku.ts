@@ -30,3 +30,49 @@ export const getSkuBreakdown = async (params: DailyFilterParams) => {
     throw new Error(error.message || 'Failed to fetch SKU breakdown');
   }
 };
+
+export const getDailySkuTrendForProject = async (
+  projectId: string,
+  params: Omit<DailyFilterParams, 'clientId'>
+) => {
+  try {
+    const response = await axiosInstance.get(
+      `/billing/sku/trend/project/${projectId}`,
+      { params }
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message ||
+          'Failed to fetch daily SKU trend for project'
+      );
+    }
+    throw new Error(
+      error.message || 'Failed to fetch daily SKU trend for project'
+    );
+  }
+};
+
+export const getSkuBreakdownForProject = async (
+  projectId: string,
+  params: Omit<DailyFilterParams, 'clientId'>
+) => {
+  try {
+    const response = await axiosInstance.get(
+      `/billing/sku/breakdown/project/${projectId}`,
+      { params }
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(
+        error.response.data.message ||
+          'Failed to fetch SKU breakdown table for project'
+      );
+    }
+    throw new Error(
+      error.message || 'Failed to fetch SKU breakdown table for project'
+    );
+  }
+};

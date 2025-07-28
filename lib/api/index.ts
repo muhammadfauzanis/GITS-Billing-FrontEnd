@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 const BASE_API_URL = `${process.env.NEXT_PUBLIC_BASE_API_URL}/api`;
 
@@ -11,15 +12,17 @@ export const axiosInstance = axios.create({
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    cachedToken = session?.access_token || null;
-    tokenExpiry = session?.expires_at ? session.expires_at * 1000 : null;
-  } else if (event === 'SIGNED_OUT') {
-    cachedToken = null;
-    tokenExpiry = null;
+supabase.auth.onAuthStateChange(
+  (event: AuthChangeEvent, session: Session | null) => {
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      cachedToken = session?.access_token || null;
+      tokenExpiry = session?.expires_at ? session.expires_at * 1000 : null;
+    } else if (event === 'SIGNED_OUT') {
+      cachedToken = null;
+      tokenExpiry = null;
+    }
   }
-});
+);
 
 axiosInstance.interceptors.request.use(
   async (config) => {
