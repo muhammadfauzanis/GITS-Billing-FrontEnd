@@ -1,11 +1,18 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useMemo, useRef, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useDashboardStore } from '@/lib/store';
+import { TimeRangeFilter } from '@/components/DateRangePicker';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
+import { BillingProjectBreakdown } from '@/components/billing-project-breakdown';
+import { BillingDailyServiceBreakdown } from '@/components/billing-daily-service-breakdown';
+import { BillingDailyProjectBreakdown } from '@/components/billing-daily-project-breakdown';
+import { BillingDailySkuBreakdown } from '@/components/billing-daily-sku-breakdown';
+import { BillingYearlyChart } from '@/components/billing-yearly-chart';
 import {
   Select,
   SelectContent,
@@ -13,200 +20,387 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BillingProjectBreakdown } from '@/components/billing-project-breakdown';
-import { BillingYearlyChart } from '@/components/billing-yearly-chart';
-import { useDashboardStore } from '@/lib/store';
+
+function areFiltersEqual(a: any, b: any) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+const PageTitle = () => {
+  const { clientName } = useDashboardStore();
+  return (
+    <div>
+      <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+        Penggunaan GCP
+      </h1>
+      <p className="text-sm text-muted-foreground">
+        Detail penggunaan untuk {clientName || 'memuat...'}
+      </p>
+    </div>
+  );
+};
 
 function UsagePageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const activeTab = searchParams.get('tab') || 'overview';
-
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth() + 1
-  );
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
-  );
-
   const {
-    fetchUsageData,
-    fetchYearlyUsageData,
+    selectedClientId,
+    loading,
+    dailyFilters,
+    monthlyFilters,
+    setDailyFilters,
+    setMonthlyFilters,
     usageData,
     yearlyUsageData,
-    loading,
-    error,
-    selectedClientId,
-  } = useDashboardStore();
-
-  useEffect(() => {
-    if (selectedClientId) {
-      if (activeTab === 'yearly-summary') {
-        fetchYearlyUsageData({ months: 12 });
-      } else {
-        fetchUsageData({ month: selectedMonth, year: selectedYear });
-      }
-    }
-  }, [
-    selectedMonth,
-    selectedYear,
-    selectedClientId,
+    dailyData,
+    dailyProjectTrendData,
+    dailySkuTrendData,
+    dailySkuBreakdownData,
     fetchUsageData,
     fetchYearlyUsageData,
-    activeTab,
+    fetchDailyData,
+    fetchDailyProjectTrend,
+    fetchDailySkuTrend,
+    fetchDailySkuBreakdown,
+  } = useDashboardStore();
+
+  const mainTab = searchParams.get('main_tab') || 'daily';
+  const subTab = searchParams.get('sub_tab') || 'service';
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+
+  const fetchedTabsRef = useRef({
+    daily: { service: false, project: false, sku: false },
+    monthly: false,
+    yearly: false,
+  });
+
+  const prevDailyFiltersRef = useRef(dailyFilters);
+  const prevMonthlyFiltersRef = useRef(monthlyFilters);
+  const fetchingRef = useRef(false);
+
+  useEffect(() => {
+    if (!selectedClientId || fetchingRef.current) return;
+
+    const fetchData = async () => {
+      fetchingRef.current = true;
+      setIsFetching(true);
+
+      const dailyFiltersChanged = !areFiltersEqual(
+        prevDailyFiltersRef.current,
+        dailyFilters
+      );
+      const monthlyFiltersChanged = !areFiltersEqual(
+        prevMonthlyFiltersRef.current,
+        monthlyFilters
+      );
+
+      if (mainTab === 'daily') {
+        const fetched =
+          fetchedTabsRef.current.daily[subTab as 'service' | 'project' | 'sku'];
+
+        if (!fetched || dailyFiltersChanged) {
+          if (subTab === 'service') {
+            await fetchDailyData(dailyFilters);
+            await fetchUsageData({
+              month: dailyFilters.month!,
+              year: dailyFilters.year!,
+            });
+          } else if (subTab === 'project') {
+            await fetchDailyProjectTrend(dailyFilters);
+            await fetchUsageData({
+              month: dailyFilters.month!,
+              year: dailyFilters.year!,
+            });
+          } else if (subTab === 'sku') {
+            await fetchDailySkuTrend(dailyFilters);
+            await fetchDailySkuBreakdown(dailyFilters);
+          }
+
+          fetchedTabsRef.current.daily[
+            subTab as 'service' | 'project' | 'sku'
+          ] = true;
+          prevDailyFiltersRef.current = dailyFilters;
+        }
+      }
+
+      if (mainTab === 'monthly') {
+        if (!fetchedTabsRef.current.monthly || monthlyFiltersChanged) {
+          await fetchUsageData(monthlyFilters);
+          fetchedTabsRef.current.monthly = true;
+          prevMonthlyFiltersRef.current = monthlyFilters;
+        }
+      }
+
+      if (mainTab === 'yearly' && !fetchedTabsRef.current.yearly) {
+        await fetchYearlyUsageData({ months: 12 });
+        fetchedTabsRef.current.yearly = true;
+      }
+
+      setHasFetchedOnce(true);
+      setIsFetching(false);
+      fetchingRef.current = false;
+    };
+
+    fetchData();
+  }, [
+    mainTab,
+    subTab,
+    selectedClientId,
+    dailyFilters,
+    monthlyFilters,
+    fetchDailyData,
+    fetchUsageData,
+    fetchDailyProjectTrend,
+    fetchDailySkuTrend,
+    fetchDailySkuBreakdown,
+    fetchYearlyUsageData,
   ]);
 
-  const handleTabChange = (tabValue: string) => {
+  const handleMainTabChange = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tabValue);
+    params.set('main_tab', tab);
+    params.set('sub_tab', 'service');
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  const months = Array.from({ length: 12 }, (_, i) => ({
-    value: (i + 1).toString(),
-    label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
-  }));
-  const years = [{ value: '2025', label: '2025' }];
+  const handleSubTabChange = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sub_tab', tab);
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
-  const currentMonthLabel = months.find(
-    (m) => m.value === selectedMonth.toString()
-  )?.label;
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        value: String(i + 1),
+        label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+      })),
+    []
+  );
+
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 6 }, (_, i) => ({
+      value: String(currentYear - 5 + i + 1),
+      label: String(currentYear - 5 + i + 1),
+    })).reverse();
+  }, []);
 
   if (!selectedClientId) {
     return (
-      <Alert
-        variant="default"
-        className="border-blue-200 bg-blue-50 text-blue-700"
-      >
-        <AlertCircle className="h-4 w-4 !text-blue-700" />
-        <AlertTitle>Pilih Client</AlertTitle>
-        <AlertDescription>
-          Silakan pilih client di halaman Dashboard utama untuk melihat data
-          penggunaan.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        <PageTitle />
+        <Alert
+          variant="default"
+          className="border-blue-200 bg-blue-50 text-blue-700"
+        >
+          <AlertCircle className="h-4 w-4 !text-blue-700" />
+          <AlertTitle>Pilih Client</AlertTitle>
+          <AlertDescription>
+            Silakan pilih client di halaman Dashboard utama untuk melihat data
+            penggunaan.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!hasFetchedOnce || isFetching) {
+    return (
+      <div className="space-y-6">
+        <PageTitle />
+        <div className="flex h-[calc(100vh-12rem)] w-full items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin" />
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Penggunaan GCP</h1>
-          <p className="text-muted-foreground">
-            Detail penggunaan layanan Google Cloud Platform
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {activeTab !== 'yearly-summary' && (
-            <Select
-              value={selectedMonth.toString()}
-              onValueChange={(v) => setSelectedMonth(Number(v))}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Pilih bulan" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month) => (
-                  <SelectItem key={month.value} value={month.value}>
-                    {month.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+        <PageTitle />
+        <div className="flex flex-wrap items-center gap-2">
+          {mainTab === 'daily' && (
+            <TimeRangeFilter
+              initialFilters={dailyFilters}
+              onFilterChange={setDailyFilters}
+            />
           )}
-          <Select
-            value={selectedYear.toString()}
-            onValueChange={(v) => setSelectedYear(Number(v))}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="Pilih tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year.value} value={year.value}>
-                  {year.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {mainTab === 'monthly' && (
+            <div className="flex gap-2 flex-wrap">
+              <Select
+                value={String(monthlyFilters.month)}
+                onValueChange={(v) =>
+                  setMonthlyFilters({ ...monthlyFilters, month: Number(v) })
+                }
+              >
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(monthlyFilters.year)}
+                onValueChange={(v) =>
+                  setMonthlyFilters({ ...monthlyFilters, year: Number(v) })
+                }
+              >
+                <SelectTrigger className="w-full sm:w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y.value} value={y.value}>
+                      {y.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="space-y-4"
-      >
-        <TabsList>
-          <TabsTrigger value="overview">Service Overview</TabsTrigger>
-          <TabsTrigger value="projects">Project Overview</TabsTrigger>
-          <TabsTrigger value="yearly-summary">
-            Year to Date Overview
-          </TabsTrigger>
+      <Tabs value={mainTab} onValueChange={handleMainTabChange}>
+        {/* Desktop Tabs */}
+        <TabsList className="hidden md:grid w-full grid-cols-3">
+          <TabsTrigger value="daily">Daily Overview</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
+          <TabsTrigger value="yearly">Year To Date Overview</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6 pt-4">
-          {loading.usage ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="animate-spin h-8 w-8 text-primary" />
-            </div>
-          ) : usageData?.serviceBreakdown?.breakdown?.length > 0 ? (
-            <BillingServiceBreakdown
-              data={usageData.serviceBreakdown}
-              showAll={true}
-              currentMonthLabel={currentMonthLabel}
-              selectedYear={selectedYear}
-            />
-          ) : (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              Tidak ada data tersedia.
-            </div>
-          )}
-        </TabsContent>
+        {/* Mobile Dropdown */}
+        <div className="md:hidden">
+          <Select value={mainTab} onValueChange={handleMainTabChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih Tampilan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily Overview</SelectItem>
+              <SelectItem value="monthly">Monthly Overview</SelectItem>
+              <SelectItem value="yearly">Year To Date Overview</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <TabsContent value="projects" className="space-y-6 pt-4">
-          {loading.usage ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="animate-spin h-8 w-8 text-primary" />
-            </div>
-          ) : usageData?.projectBreakdown?.breakdown?.length > 0 ? (
-            <BillingProjectBreakdown
-              data={usageData.projectBreakdown}
-              showAll={true}
-              currentMonthLabel={currentMonthLabel}
-              selectedYear={selectedYear}
-            />
-          ) : (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              Tidak ada data tersedia.
-            </div>
-          )}
-        </TabsContent>
+        <div className="pt-4 min-h-[450px]">
+          <TabsContent value="daily" className="mt-2">
+            <Tabs value={subTab} onValueChange={handleSubTabChange}>
+              <TabsList>
+                <TabsTrigger value="service">Services</TabsTrigger>
+                <TabsTrigger value="project">Projects</TabsTrigger>
+                <TabsTrigger value="sku">SKU</TabsTrigger>
+              </TabsList>
+              <div className="pt-4">
+                <TabsContent value="service">
+                  {dailyData && usageData?.serviceBreakdown ? (
+                    <BillingDailyServiceBreakdown
+                      dailyData={dailyData}
+                      monthlyData={usageData.serviceBreakdown}
+                      showAll
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="project">
+                  {dailyProjectTrendData && usageData?.projectBreakdown ? (
+                    <BillingDailyProjectBreakdown
+                      dailyData={dailyProjectTrendData}
+                      monthlyData={usageData.projectBreakdown}
+                      showAll
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="sku">
+                  {dailySkuTrendData && dailySkuBreakdownData ? (
+                    <BillingDailySkuBreakdown
+                      trendData={dailySkuTrendData}
+                      breakdownData={dailySkuBreakdownData}
+                      showAll
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
+          </TabsContent>
 
-        <TabsContent value="yearly-summary" className="space-y-6 pt-4">
-          {loading.yearlyUsage ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="animate-spin h-8 w-8 text-primary" />
-            </div>
-          ) : yearlyUsageData ? (
-            <BillingYearlyChart data={yearlyUsageData} showAll={true} />
-          ) : (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              Tidak ada data ringkasan tahunan untuk ditampilkan.
-            </div>
-          )}
-        </TabsContent>
+          <TabsContent value="monthly" className="mt-6">
+            <Tabs value={subTab} onValueChange={handleSubTabChange}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="service">Services</TabsTrigger>
+                <TabsTrigger value="project">Projects</TabsTrigger>
+              </TabsList>
+              <div className="pt-4">
+                <TabsContent value="service">
+                  {usageData?.serviceBreakdown?.breakdown?.length > 0 ? (
+                    <BillingServiceBreakdown
+                      data={usageData.serviceBreakdown}
+                      showAll
+                      currentMonthLabel={
+                        months.find(
+                          (m) => m.value === `${monthlyFilters.month}`
+                        )?.label
+                      }
+                      selectedYear={monthlyFilters.year}
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="project">
+                  {usageData?.projectBreakdown?.breakdown?.length > 0 ? (
+                    <BillingProjectBreakdown
+                      data={usageData.projectBreakdown}
+                      showAll
+                      currentMonthLabel={
+                        months.find(
+                          (m) => m.value === `${monthlyFilters.month}`
+                        )?.label
+                      }
+                      selectedYear={monthlyFilters.year}
+                    />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-10">
+                      Data tidak tersedia.
+                    </p>
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="yearly" className="mt-6">
+            {yearlyUsageData ? (
+              <BillingYearlyChart data={yearlyUsageData} showAll />
+            ) : (
+              <p className="text-center text-muted-foreground py-10">
+                Data tidak tersedia.
+              </p>
+            )}
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );
@@ -214,7 +408,13 @@ function UsagePageContent() {
 
 export default function UsagePageWrapper() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
       <UsagePageContent />
     </Suspense>
   );

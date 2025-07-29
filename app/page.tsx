@@ -9,11 +9,11 @@ export default function Home() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
-    }
-  }, [user, isLoading, router]);
+  // useEffect(() => {
+  //   if (!isLoading && user) {
+  //     router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
+  //   }
+  // }, [user, isLoading, router]);
 
   if (isLoading || user) {
     return null;

@@ -4,8 +4,8 @@ import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import type { Session } from '@supabase/supabase-js';
-import { toast } from '@/hooks/use-toast';
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { Loader2 } from 'lucide-react';
 
 export type AppUser = {
   id: string;
@@ -33,6 +33,44 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
+const getUserProfile = async (
+  session: Session | null
+): Promise<AppUser | null> => {
+  if (!session?.user) return null;
+  const { user: currentUser } = session;
+
+  const { data: profile, error } = await supabase
+    .from('users')
+    .select('client_id, role, is_password_set, supabase_auth_id')
+    .eq('email', currentUser.email)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Auth Error: Gagal mengambil profil user', error);
+    await supabase.auth.signOut();
+    return null;
+  }
+
+  if (profile) {
+    if (!profile.supabase_auth_id) {
+      await supabase
+        .from('users')
+        .update({ supabase_auth_id: currentUser.id })
+        .eq('email', currentUser.email);
+    }
+    return {
+      id: currentUser.id,
+      email: currentUser.email || '',
+      clientId: profile.client_id ? String(profile.client_id) : null,
+      role: profile.role,
+      isPasswordSet: profile.is_password_set,
+    };
+  } else {
+    await supabase.auth.signOut();
+    return null;
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -41,89 +79,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const handleAuthStateChange = async (
-      event: string,
-      currentSession: Session | null
-    ) => {
-      setSession(currentSession);
-      setIsLoading(true);
-
-      if (currentSession) {
-        const { data: profile, error } = await supabase
-          .from('users')
-          .select('id, client_id, role, is_password_set, supabase_auth_id')
-          .eq('email', currentSession.user.email)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching user profile:', error.message);
-          await supabase.auth.signOut();
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-
-        if (!profile) {
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            router.push('/unregistered');
-          }
-          await supabase.auth.signOut();
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-
-        if (profile && !profile.supabase_auth_id) {
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({ supabase_auth_id: currentSession.user.id })
-            .eq('email', currentSession.user.email);
-
-          if (updateError) {
-            console.error('Failed to link supabase auth id:', updateError);
-            await supabase.auth.signOut();
-            return;
-          }
-        }
-
-        const appUser: AppUser = {
-          id: currentSession.user.id,
-          email: currentSession.user.email || '',
-          clientId: profile.client_id ? String(profile.client_id) : null,
-          role: profile.role,
-          isPasswordSet: profile.is_password_set || false,
-        };
-        setUser(appUser);
-
-        if (event === 'SIGNED_IN') {
-          if (!appUser.isPasswordSet) {
-            router.push(`/set-password?email=${appUser.email}`);
-          } else if (
-            pathname === '/' ||
-            pathname === '/login' ||
-            pathname === '/auth/callback/continue'
-          ) {
-            router.push(appUser.role === 'admin' ? '/admin' : '/dashboard');
-          }
-        }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
-    };
-
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      handleAuthStateChange('INITIAL_SESSION', initialSession);
-    });
-
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        if (event === 'TOKEN_REFRESHED') {
-          setSession(currentSession);
-          return;
-        }
+      (event: AuthChangeEvent, session: Session | null) => {
+        getUserProfile(session).then((appUser) => {
+          setSession(session);
+          setUser(appUser);
+          setIsLoading(false);
+        });
 
-        handleAuthStateChange(event, currentSession);
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          router.refresh();
+        }
       }
     );
 
@@ -132,38 +98,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const login = async (email: string, password: string) => {
-    await supabase.auth.signOut();
+  useEffect(() => {
+    if (isLoading) return;
+    const publicPaths = ['/', '/set-password', '/unregistered'];
+    const isPublicPath = publicPaths.includes(pathname);
+    const isAuthCallback = pathname.startsWith('/auth/callback');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
+    if (isAuthCallback) return;
+
+    if (!user && !isPublicPath) {
+      router.replace('/');
+      return;
+    }
+
+    if (user) {
+      if (!user.isPasswordSet && pathname !== '/set-password') {
+        router.replace(`/set-password?email=${user.email}`);
+      } else if (
+        user.isPasswordSet &&
+        (isPublicPath || pathname === '/set-password')
+      ) {
+        router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
+      } else if (user.role !== 'admin' && pathname.startsWith('/admin')) {
+        router.replace('/dashboard');
+      }
+    }
+  }, [user, isLoading, pathname, router]);
+
+  const login = async (email: string, password: string) => {
+    await supabase.auth.signInWithPassword({ email, password });
   };
 
   const loginWithGoogle = async () => {
-    await supabase.auth.signOut(); // Hindari user sebelumnya masih ada
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-    });
-
-    if (error) throw error;
+    await supabase.auth.signInWithOAuth({ provider: 'google' });
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/';
   };
 
-  return (
-    <AuthContext.Provider
-      value={{ user, session, isLoading, login, loginWithGoogle, logout }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = { user, session, isLoading, login, loginWithGoogle, logout };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Memuat sesi...</span>
+      </div>
+    );
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

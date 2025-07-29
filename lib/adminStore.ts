@@ -5,7 +5,7 @@ import {
   deleteUser as apiDeleteUser,
   updateUserClientId as apiUpdateUserClient,
   registerUser as apiRegisterUser,
-} from './api';
+} from './api/index';
 
 export interface User {
   id: number;

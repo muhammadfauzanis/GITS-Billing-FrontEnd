@@ -1,20 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { BillingServiceBreakdown } from '@/components/billing-service-breakdown';
+import { BillingDailyServiceBreakdown } from '@/components/billing-daily-service-breakdown';
+import { BillingDailySkuBreakdown } from '@/components/billing-daily-sku-breakdown';
+import {
+  TimeRangeFilter,
+  TimeRangeFilterParams,
+} from '@/components/DateRangePicker';
 import {
   Select,
   SelectContent,
@@ -22,164 +21,238 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getProjectBreakdown } from '@/lib/api';
+import { useDashboardStore } from '@/lib/store';
 
 export default function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [projectData, setProjectData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth() + 1
-  );
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
-  );
+  const { id: projectId } = useParams<{ id: string }>();
+
+  const { projectDetailData, loading, error, fetchProjectDetailData } =
+    useDashboardStore();
+
+  const {
+    monthly: monthlyData,
+    dailyService: dailyServiceData,
+    dailySkuTrend,
+    dailySkuBreakdown,
+  } = projectDetailData;
+
+  const [mainTab, setMainTab] = useState<'monthly' | 'daily'>('monthly');
+  const [subTab, setSubTab] = useState<'service' | 'sku'>('service');
+
+  const [monthlyFilters, setMonthlyFilters] = useState({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
+  const [dailyFilters, setDailyFilters] = useState<TimeRangeFilterParams>({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
 
   useEffect(() => {
-    const fetchProjectData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+    if (!projectId) return;
 
-        const breakdownData = await getProjectBreakdown(
-          id as string,
-          selectedMonth,
-          selectedYear
-        );
-        setProjectData(breakdownData);
-      } catch (err: any) {
-        console.error('Error fetching project data:', err);
-        setError(err.message || 'Gagal memuat data proyek');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const filtersToUse = mainTab === 'monthly' ? monthlyFilters : dailyFilters;
+    const dataType = mainTab;
 
-    if (id) {
-      fetchProjectData();
-    }
-  }, [id, selectedMonth, selectedYear]);
+    fetchProjectDetailData(projectId, filtersToUse, dataType);
+  }, [
+    projectId,
+    mainTab,
+    monthlyFilters,
+    dailyFilters,
+    fetchProjectDetailData,
+  ]);
 
-  const handleMonthChange = (value: string) => {
-    setSelectedMonth(Number.parseInt(value));
-  };
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+      })),
+    []
+  );
 
-  const handleYearChange = (value: string) => {
-    setSelectedYear(Number.parseInt(value));
-  };
-
-  const months = Array.from({ length: 12 }, (_, i) => ({
-    value: (i + 1).toString(),
-    label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
-  }));
-
-  const years = [
-    { value: '2024', label: '2024' },
-    { value: '2025', label: '2025' },
-  ];
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 2 }, (_, i) => ({
+      value: String(currentYear - i),
+      label: String(currentYear - i),
+    })).reverse();
+  }, []);
 
   const currentMonthLabel = months.find(
-    (m) => m.value === selectedMonth.toString()
+    (m) => m.value === monthlyFilters.month.toString()
   )?.label;
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Kembali
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Detail Proyek: {id}
-          </h1>
+  const renderContent = () => {
+    if (loading.projectDetail) {
+      return (
+        <div className="flex h-[300px] items-center justify-center">
+          <Loader2 className="animate-spin h-8 w-8" />
         </div>
-        <div className="flex gap-2">
-          <Select
-            value={selectedMonth.toString()}
-            onValueChange={handleMonthChange}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Pilih bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month) => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedYear.toString()}
-            onValueChange={handleYearChange}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="Pilih tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year.value} value={year.value}>
-                  {year.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {error && (
+      );
+    }
+    if (error) {
+      return (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
+      );
+    }
 
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>Total Biaya</CardTitle>
-          <CardDescription>
-            Total biaya untuk bulan {currentMonthLabel} {selectedYear}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold">
-            {projectData?.total?.value || 'Rp 0'}
-          </div>
-        </CardContent>
-      </Card> */}
-
-      {projectData?.breakdown && projectData.breakdown.length > 0 ? (
+    if (mainTab === 'monthly') {
+      return monthlyData?.breakdown?.length > 0 ? (
         <BillingServiceBreakdown
-          data={projectData}
+          data={monthlyData}
           showAll={true}
           currentMonthLabel={currentMonthLabel}
-          selectedYear={selectedYear}
+          selectedYear={monthlyFilters.year}
         />
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Breakdown Layanan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              Tidak ada data tersedia untuk periode ini.
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        <p className="text-center text-muted-foreground py-10">
+          Data bulanan tidak tersedia untuk periode ini.
+        </p>
+      );
+    }
+
+    if (mainTab === 'daily') {
+      if (subTab === 'service') {
+        return dailyServiceData && monthlyData ? (
+          <BillingDailyServiceBreakdown
+            dailyData={{
+              dailyBreakdown: dailyServiceData.daily_breakdown.map(
+                (d: { date: any; services: any[] }) => ({
+                  date: d.date,
+                  services: d.services.map(
+                    (s: { service: any; rawValue: any }) => ({
+                      service: s.service,
+                      cost: s.rawValue,
+                    })
+                  ),
+                })
+              ),
+              services: monthlyData.breakdown.map((s: any) => s.service),
+            }}
+            monthlyData={monthlyData}
+            showAll
+          />
+        ) : (
+          <p className="text-center text-muted-foreground py-10">
+            Data harian layanan tidak tersedia untuk periode ini.
+          </p>
+        );
+      }
+      if (subTab === 'sku') {
+        return dailySkuTrend && dailySkuBreakdown ? (
+          <BillingDailySkuBreakdown
+            trendData={dailySkuTrend}
+            breakdownData={dailySkuBreakdown}
+            showAll
+          />
+        ) : (
+          <p className="text-center text-muted-foreground py-10">
+            Data harian SKU tidak tersedia untuk periode ini.
+          </p>
+        );
+      }
+    }
+    return null;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0 mt-1" asChild>
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Kembali</span>
+            </Link>
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-3xl font-bold tracking-tight truncate">
+              Detail Proyek
+            </h1>
+            <p className="lg:text-lg text-muted-foreground truncate">
+              {projectId}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 w-full md:w-auto">
+          {mainTab === 'monthly' ? (
+            <>
+              <Select
+                value={String(monthlyFilters.month)}
+                onValueChange={(v) =>
+                  setMonthlyFilters((f) => ({ ...f, month: Number(v) }))
+                }
+              >
+                <SelectTrigger className="w-full md:w-[140px]">
+                  <SelectValue placeholder="Pilih bulan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(monthlyFilters.year)}
+                onValueChange={(v) =>
+                  setMonthlyFilters((f) => ({ ...f, year: Number(v) }))
+                }
+              >
+                <SelectTrigger className="w-full md:w-[100px]">
+                  <SelectValue placeholder="Pilih tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y.value} value={y.value}>
+                      {y.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <TimeRangeFilter
+              initialFilters={dailyFilters}
+              onFilterChange={setDailyFilters}
+            />
+          )}
+        </div>
+      </div>
+
+      <Tabs
+        value={mainTab}
+        onValueChange={(v) => setMainTab(v as 'monthly' | 'daily')}
+        className="w-full"
+      >
+        <TabsList className="">
+          <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
+          <TabsTrigger value="daily">Daily Overview</TabsTrigger>
+        </TabsList>
+        <TabsContent value="monthly" className="mt-4">
+          {renderContent()}
+        </TabsContent>
+        <TabsContent value="daily" className="mt-4 space-y-4">
+          <Tabs
+            value={subTab}
+            onValueChange={(v) => setSubTab(v as 'service' | 'sku')}
+          >
+            <TabsList className="">
+              <TabsTrigger value="service">Services</TabsTrigger>
+              <TabsTrigger value="sku">SKU</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {renderContent()}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
