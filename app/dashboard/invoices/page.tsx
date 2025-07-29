@@ -60,7 +60,8 @@ export default function InvoicesPage() {
     try {
       const data = await getInvoiceViewUrl(invoiceId);
       if (data.url) {
-        setViewingUrl(data.url);
+        const secureUrl = data.url.replace(/^http:/, 'https');
+        setViewingUrl(secureUrl);
       }
     } catch (err: any) {
       toast({
@@ -77,7 +78,10 @@ export default function InvoicesPage() {
     setIsActionLoading(invoice.id);
     try {
       const { url } = await getInvoiceViewUrl(invoice.id);
-      const response = await fetch(url);
+
+      const secureUrl = url.replace(/^http:/, 'https');
+
+      const response = await fetch(secureUrl);
       if (!response.ok) {
         throw new Error('Gagal mengunduh file dari server.');
       }
@@ -88,7 +92,10 @@ export default function InvoicesPage() {
       link.setAttribute('download', `${invoice.invoiceNumber}.pdf`);
       document.body.appendChild(link);
       link.click();
-      link.parentNode?.removeChild(link);
+
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err: any) {
       toast({
