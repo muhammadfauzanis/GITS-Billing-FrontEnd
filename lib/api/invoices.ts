@@ -15,7 +15,7 @@ export const getClientInvoices = async (
 ): Promise<{ invoices: Invoice[] }> => {
   try {
     const params = clientId ? { clientId } : {};
-    const response = await axiosInstance.get('/invoices', { params });
+    const response = await axiosInstance.get('/invoices/', { params });
     return response.data;
   } catch (error: any) {
     if (error.response?.data) {
