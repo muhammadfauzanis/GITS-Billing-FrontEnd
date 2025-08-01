@@ -4,7 +4,6 @@ import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-// Impor tipe data yang dibutuhkan dari supabase-js
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 
@@ -80,30 +79,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const handleAuth = async (currentSession: Session | null) => {
-      const appUser = await getUserProfile(currentSession);
-      setUser(appUser);
-      setSession(currentSession);
-      setIsLoading(false);
-    };
-
-    // Menambahkan tipe data pada hasil getSession() untuk memperbaiki error pertama
-    supabase.auth
-      .getSession()
-      .then(({ data }: { data: { session: Session | null } }) => {
-        handleAuth(data.session);
-      });
-
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      // Menambahkan tipe data pada parameter event dan session untuk memperbaiki error kedua & ketiga
-      (event: AuthChangeEvent, newSession: Session | null) => {
-        // Membandingkan dengan state 'session' yang ada, bukan 'AuthContext.session'
-        // Ini memperbaiki error keempat
-        if (newSession?.access_token !== session?.access_token) {
-          handleAuth(newSession);
-        }
-        if (event === 'SIGNED_IN' && !user) {
-          router.push('/unregistered');
+      (event: AuthChangeEvent, session: Session | null) => {
+        getUserProfile(session).then((appUser) => {
+          setSession(session);
+          setUser(appUser);
+          setIsLoading(false);
+        });
+
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          router.refresh();
         }
       }
     );
@@ -111,8 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       authListener.subscription.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, session]); // Menambahkan 'session' sebagai dependensi
+  }, [router]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -130,7 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       if (!user.isPasswordSet && pathname !== '/set-password') {
         router.replace(`/set-password?email=${user.email}`);
-      } else if (user.isPasswordSet && publicPaths.includes(pathname)) {
+      } else if (
+        user.isPasswordSet &&
+        (isPublicPath || pathname === '/set-password')
+      ) {
         router.replace(user.role === 'admin' ? '/admin' : '/dashboard');
       } else if (user.role !== 'admin' && pathname.startsWith('/admin')) {
         router.replace('/dashboard');
@@ -148,7 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await supabase.auth.signOut();
-    router.push('/');
   };
 
   const value = { user, session, isLoading, login, loginWithGoogle, logout };
