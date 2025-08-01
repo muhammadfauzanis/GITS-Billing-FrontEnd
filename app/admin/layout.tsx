@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useDashboardStore } from '@/lib/store';
 
 export default function AdminLayout({
   children,
@@ -25,6 +26,18 @@ export default function AdminLayout({
   //     }
   //   }
   // }, [user, isLoading, router]);
+
+  const { fetchNotifications } = useDashboardStore();
+
+  useEffect(() => {
+    if (user) {
+      const intervalId = setInterval(() => {
+        fetchNotifications();
+      }, 30000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [user, fetchNotifications]);
 
   if (isLoading) {
     return (

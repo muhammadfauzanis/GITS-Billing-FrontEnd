@@ -1,6 +1,7 @@
 import type { AppUser } from '../auth';
 import type { DailyFilterParams } from '../api/billingDaily';
 import type { Invoice } from '../api/invoices';
+import type { AppNotification } from '../api/notifications';
 
 export interface Client {
   id: string;
@@ -45,6 +46,7 @@ export interface ClientSlice {
     dailySkuTrend: boolean;
     dailySkuBreakdown: boolean;
     invoices: boolean;
+    notifications: boolean;
   };
   initializeDashboard: (user: AppUser) => void;
   setClients: (clients: Client[]) => void;
@@ -100,8 +102,16 @@ export interface InvoiceSlice {
   fetchInvoices: () => Promise<void>;
 }
 
+export interface NotificationSlice {
+  notifications: AppNotification[];
+  unreadCount: number;
+  fetchNotifications: () => Promise<void>;
+  markAsRead: (notificationId: number) => Promise<void>;
+}
+
 export type DashboardState = ClientSlice &
   DailySlice &
   MonthlySlice &
   YearlySlice &
-  InvoiceSlice;
+  InvoiceSlice &
+  NotificationSlice;

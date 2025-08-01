@@ -6,6 +6,7 @@ import { createDailySlice } from './dailySlice';
 import { createMonthlySlice } from './monthlySlice';
 import { createYearlySlice } from './yearlySlice';
 import { createInvoiceSlice } from './invoiceSlice';
+import { createNotificationSlice } from './notificationSlice';
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
@@ -15,6 +16,7 @@ export const useDashboardStore = create<DashboardState>()(
       ...createMonthlySlice(set, get, api),
       ...createYearlySlice(set, get, api),
       ...createInvoiceSlice(set, get, api),
+      ...createNotificationSlice(set, get, api),
     }),
     {
       name: 'dashboard-store',
