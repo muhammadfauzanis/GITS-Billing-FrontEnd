@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sheet';
 import { DashboardSidebar } from './dashboard-sidebar';
 import { useAuth } from '@/lib/auth';
+import { NotificationDropdown } from './notification-dropdown';
 
 export function DashboardHeader() {
   const { user, logout } = useAuth();
@@ -68,11 +69,7 @@ export function DashboardHeader() {
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-
+        <NotificationDropdown />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">

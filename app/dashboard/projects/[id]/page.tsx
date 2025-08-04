@@ -34,7 +34,7 @@ export default function ProjectDetailPage() {
     dailyService: dailyServiceData,
     dailySkuTrend,
     dailySkuBreakdown,
-  } = projectDetailData;
+  } = projectDetailData || {};
 
   const [mainTab, setMainTab] = useState<'monthly' | 'daily'>('monthly');
   const [subTab, setSubTab] = useState<'service' | 'sku'>('service');
