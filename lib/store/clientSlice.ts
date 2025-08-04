@@ -30,6 +30,7 @@ export const createClientSlice: StateCreator<
     dailySkuTrend: true,
     dailySkuBreakdown: true,
     invoices: true,
+    notifications: true,
   },
 
   initializeDashboard: (user: AppUser) => {
@@ -49,11 +50,15 @@ export const createClientSlice: StateCreator<
       selectedClientId: clientId,
       dailyFilters: defaultFilters,
       monthlyFilters: defaultFilters,
-      // Reset semua data saat client berubah
       dashboardData: null,
       usageData: null,
       settingsData: null,
-      projectDetailData: null,
+      projectDetailData: {
+        monthly: null,
+        dailyService: null,
+        dailySkuTrend: null,
+        dailySkuBreakdown: null,
+      },
       yearlyUsageData: null,
       yearlySummaryData: null,
       dailyData: null,
