@@ -12,7 +12,7 @@ export const getNotifications = async (): Promise<{
   notifications: AppNotification[];
 }> => {
   try {
-    const response = await axiosInstance.get('/notifications');
+    const response = await axiosInstance.get('/notifications/');
     return response.data;
   } catch (error: any) {
     throw new Error(
@@ -26,7 +26,7 @@ export const markNotificationAsRead = async (
 ): Promise<{ message: string }> => {
   try {
     const response = await axiosInstance.post(
-      `/notifications/${notificationId}/read`
+      `/notifications/${notificationId}/read/`
     );
     return response.data;
   } catch (error: any) {

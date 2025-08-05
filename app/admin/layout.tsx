@@ -27,17 +27,17 @@ export default function AdminLayout({
   //   }
   // }, [user, isLoading, router]);
 
-  const { fetchNotifications } = useDashboardStore();
+  // const { fetchNotifications } = useDashboardStore();
 
-  useEffect(() => {
-    if (user) {
-      const intervalId = setInterval(() => {
-        fetchNotifications();
-      }, 30000);
+  // useEffect(() => {
+  //   if (user) {
+  //     const intervalId = setInterval(() => {
+  //       fetchNotifications();
+  //     }, 30000);
 
-      return () => clearInterval(intervalId);
-    }
-  }, [user, fetchNotifications]);
+  //     return () => clearInterval(intervalId);
+  //   }
+  // }, [user, fetchNotifications]);
 
   if (isLoading) {
     return (
