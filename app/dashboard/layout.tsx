@@ -14,10 +14,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, isLoading } = useAuth();
-  const { fetchNotifications } = useDashboardStore(); // Get the action
+  const { fetchNotifications } = useDashboardStore();
 
   useEffect(() => {
-    if (user) {
+    if (user && user.role !== 'admin') {
       const intervalId = setInterval(() => {
         fetchNotifications();
       }, 30000);
