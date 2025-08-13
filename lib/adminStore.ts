@@ -43,6 +43,32 @@ interface AdminState {
   updateUserClient: (userId: number, clientId: number) => Promise<void>;
 }
 
+export type ContractStatus = 'active' | 'expiring_soon' | 'expired' | 'all';
+
+export interface Contract {
+  id: string;
+  clientName: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+  fileUrl: string;
+  fileName: string;
+  clientEmails: string[];
+  internalEmails: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContractFormState {
+  clientName: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+  file: File | null;
+  clientEmails: string[];
+  internalEmails: string[];
+}
+
 export const useAdminStore = create<AdminState>((set, get) => ({
   users: [],
   clients: [],
