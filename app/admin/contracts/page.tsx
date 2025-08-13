@@ -9,107 +9,95 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Upload } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAdminStore } from '@/lib/adminStore';
+import {
+  useAdminStore,
+  Contract,
+  ContractFormState,
+  ContractStatus,
+} from '@/lib/adminStore';
+import { getContractStatus } from '@/lib/utils';
 import { ContractDialog } from '@/components/admin/contracts/ContractDialog';
 import { ContractStatsCards } from '@/components/admin/contracts/ContractStatsCards';
-import { ContractsTable} from '@/components/admin/contracts/ContractsTable';
-import { Contract, ContractFormState, ContractStatus } from '@/lib/adminStore';
-
-// Data Dummy
-const dummyContracts: Contract[] = [
-  {
-    id: '1',
-    clientName: 'PT. Teknologi Maju',
-    startDate: '2024-01-15',
-    endDate: '2025-12-31',
-    notes:
-      'Kontrak layanan cloud computing dan infrastruktur IT untuk periode 2025. Termasuk SLA 99.9% dan support 24/7. Pembayaran dilakukan per kuartal dengan invoice dikirimkan pada awal periode. Project Manager: Budi Santoso.',
-    fileUrl: '/contracts/pt-teknologi-maju-2024.pdf',
-    fileName: 'pt-teknologi-maju-2024.pdf',
-    clientEmails: ['admin@teknologimaju.com', 'it@teknologimaju.com'],
-    internalEmails: ['contracts@gits.id', 'admin@gits.id'],
-    createdAt: '2024-01-10',
-    updatedAt: '2024-01-10',
-  },
-  {
-    id: '2',
-    clientName: 'CV. Digital Solutions',
-    startDate: '2023-06-01',
-    endDate: '2024-08-25',
-    notes: 'Kontrak pengembangan aplikasi mobile dan web development services.',
-    fileUrl: '/contracts/cv-digital-solutions-2023.pdf',
-    fileName: 'cv-digital-solutions-2023.pdf',
-    clientEmails: ['contact@digitalsolutions.co.id'],
-    internalEmails: ['contracts@gits.id'],
-    createdAt: '2023-05-25',
-    updatedAt: '2023-05-25',
-  },
-  {
-    id: '3',
-    clientName: 'PT. Inovasi Bisnis',
-    startDate: '2023-03-01',
-    endDate: '2024-02-29',
-    notes: 'Kontrak konsultasi digital transformation dan system integration.',
-    fileUrl: '/contracts/pt-inovasi-bisnis-2023.pdf',
-    fileName: 'pt-inovasi-bisnis-2023.pdf',
-    clientEmails: ['procurement@inovasibisnis.com', 'cto@inovasibisnis.com'],
-    internalEmails: ['contracts@gits.id', 'sales@gits.id'],
-    createdAt: '2023-02-20',
-    updatedAt: '2023-02-20',
-  },
-];
-
-const getContractStatus = (endDate: string): ContractStatus => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  const diffTime = end.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'expired';
-  if (diffDays <= 30) return 'expiring_soon';
-  return 'active';
-};
+import { ContractsTable } from '@/components/admin/contracts/ContractsTable';
 
 export default function ContractsPage() {
   const { toast } = useToast();
-  const [contracts, setContracts] = useState<Contract[]>(dummyContracts);
-  const { clients, fetchClients } = useAdminStore();
+  const {
+    contracts,
+    clients,
+    fetchContracts,
+    fetchClients,
+    addContract,
+    editContract,
+    removeContract,
+    loading,
+  } = useAdminStore();
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [filterStatus, setFilterStatus] = useState<ContractStatus>('all');
 
+  // FIX: Dependency array disederhanakan untuk mencegah infinite loop
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+    fetchContracts();
+  }, [fetchClients, fetchContracts]);
 
   const filteredContracts = useMemo(() => {
     if (filterStatus === 'all') return contracts;
     return contracts.filter(
-      (c) => getContractStatus(c.endDate) === filterStatus
+      (c) => getContractStatus(c.end_date) === filterStatus
     );
   }, [contracts, filterStatus]);
 
   const handleAddSubmit = async (formData: ContractFormState) => {
-    console.log('Adding new contract:', formData);
-    await new Promise((res) => setTimeout(res, 1000));
-    toast({ title: 'Success', description: 'New contract has been uploaded.' });
-    setIsAddDialogOpen(false);
+    try {
+      await addContract(formData);
+      toast({
+        title: 'Success',
+        description: 'New contract has been uploaded.',
+      });
+      setIsAddDialogOpen(false);
+      await fetchContracts(); // Re-fetch
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleEditSubmit = async (formData: ContractFormState) => {
-    console.log('Updating contract:', editingContract?.id, formData);
-    await new Promise((res) => setTimeout(res, 1000));
-    toast({ title: 'Success', description: 'Contract has been updated.' });
-    setIsEditDialogOpen(false);
+    if (!editingContract) return;
+    try {
+      await editContract(editingContract.id, formData);
+      toast({ title: 'Success', description: 'Contract has been updated.' });
+      setIsEditDialogOpen(false);
+      await fetchContracts(); // Re-fetch
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    console.log('Deleting contract:', id);
-    await new Promise((res) => setTimeout(res, 500));
-    toast({ title: 'Success', description: 'Contract has been deleted.' });
+    try {
+      await removeContract(id);
+      toast({ title: 'Success', description: 'Contract has been deleted.' });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const openEditDialog = (contract: Contract) => {
@@ -120,21 +108,30 @@ export default function ContractsPage() {
   const editingContractInitialData = useMemo<ContractFormState | null>(() => {
     if (!editingContract) return null;
     return {
-      clientName: editingContract.clientName,
-      startDate: editingContract.startDate,
-      endDate: editingContract.endDate,
-      notes: editingContract.notes,
+      clientId: editingContract.client_id,
+      clientName: editingContract.client_name,
+      startDate: editingContract.start_date,
+      endDate: editingContract.end_date,
+      notes: editingContract.notes || '',
       file: null,
       clientEmails:
-        editingContract.clientEmails.length > 0
-          ? editingContract.clientEmails
+        editingContract.client_emails?.length > 0
+          ? editingContract.client_emails
           : [''],
       internalEmails:
-        editingContract.internalEmails.length > 0
-          ? editingContract.internalEmails
+        editingContract.internal_emails?.length > 0
+          ? editingContract.internal_emails
           : [''],
     };
   }, [editingContract]);
+
+  if (loading.contracts && contracts.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -164,7 +161,7 @@ export default function ContractsPage() {
                 size="sm"
                 onClick={() => setFilterStatus('all')}
               >
-                All
+                All ({contracts.length})
               </Button>
               <Button
                 variant={filterStatus === 'active' ? 'default' : 'outline'}

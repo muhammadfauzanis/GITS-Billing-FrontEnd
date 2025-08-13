@@ -31,17 +31,7 @@ import {
 } from '@/components/ui/table';
 import { Eye, Edit, Trash2 } from 'lucide-react';
 import { Contract, ContractStatus } from '@/lib/adminStore';
-
-const getContractStatus = (endDate: string): ContractStatus => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  const diffTime = end.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'expired';
-  if (diffDays <= 30) return 'expiring_soon';
-  return 'active';
-};
+import { getContractStatus, formatDate } from '@/lib/utils';
 
 const getStatusBadge = (status: ContractStatus) => {
   if (status === 'expired')
@@ -68,13 +58,6 @@ const getStatusBadge = (status: ContractStatus) => {
     </Badge>
   );
 };
-
-const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 
 interface ContractsTableProps {
   contracts: Contract[];
@@ -103,17 +86,19 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
         {contracts.length > 0 ? (
           contracts.map((contract) => (
             <TableRow key={contract.id}>
+              {/* FIX: Menggunakan snake_case sesuai tipe data backend */}
               <TableCell className="font-medium">
-                {contract.clientName}
+                {contract.client_name}
               </TableCell>
-              <TableCell>{formatDate(contract.startDate)}</TableCell>
-              <TableCell>{formatDate(contract.endDate)}</TableCell>
+              <TableCell>{formatDate(contract.start_date)}</TableCell>
+              <TableCell>{formatDate(contract.end_date)}</TableCell>
               <TableCell>
-                {getStatusBadge(getContractStatus(contract.endDate))}
+                {getStatusBadge(getContractStatus(contract.end_date))}
               </TableCell>
               <TableCell className="max-w-[200px] truncate">
-                {contract.notes.substring(0, 50)}
-                {contract.notes.length > 50 && (
+                {/* FIX: Menambahkan null check untuk notes */}
+                {contract.notes?.substring(0, 50)}
+                {contract.notes && contract.notes.length > 50 && (
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="link" className="p-0 h-auto ml-1">
@@ -123,7 +108,7 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>
-                          Notes for {contract.clientName}
+                          Notes for {contract.client_name}
                         </DialogTitle>
                       </DialogHeader>
                       <div className="py-4 my-4 border-t border-b">
@@ -140,7 +125,7 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => window.open(contract.fileUrl, '_blank')}
+                    onClick={() => window.open(contract.file_url, '_blank')}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -168,7 +153,7 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                           This action will permanently delete the contract for{' '}
-                          <strong>{contract.clientName}</strong>.
+                          <strong>{contract.client_name}</strong>.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

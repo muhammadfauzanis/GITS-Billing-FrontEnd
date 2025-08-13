@@ -17,7 +17,6 @@ import {
 import { Loader2 } from 'lucide-react';
 import { ClientCombobox } from './ClientCombobox';
 import { EmailInputManager } from './EmailInputManager';
-// FIX 1: Import path diperbarui dari './types' ke '@/lib/adminStore'
 import { ContractFormState } from '@/lib/adminStore';
 import type { Client } from '@/lib/adminStore';
 
@@ -30,6 +29,17 @@ interface ContractDialogProps {
   clients: Client[];
 }
 
+const EMPTY_FORM: ContractFormState = {
+  clientId: null,
+  clientName: '',
+  startDate: '',
+  endDate: '',
+  notes: '',
+  file: null,
+  clientEmails: [''],
+  internalEmails: [''],
+};
+
 export const ContractDialog: React.FC<ContractDialogProps> = ({
   mode,
   isOpen,
@@ -38,41 +48,24 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
   initialData,
   clients,
 }) => {
-  const [formData, setFormData] = useState<ContractFormState>({
-    clientName: '',
-    startDate: '',
-    endDate: '',
-    notes: '',
-    file: null,
-    clientEmails: [''],
-    internalEmails: [''],
-  });
+  const [formData, setFormData] = useState<ContractFormState>(EMPTY_FORM);
   const [originalData, setOriginalData] = useState<ContractFormState | null>(
     null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (mode === 'edit' && initialData) {
+    if (isOpen && mode === 'edit' && initialData) {
       setFormData(initialData);
       setOriginalData(initialData);
     } else {
-      setFormData({
-        clientName: '',
-        startDate: '',
-        endDate: '',
-        notes: '',
-        file: null,
-        clientEmails: [''],
-        internalEmails: [''],
-      });
+      setFormData(EMPTY_FORM);
       setOriginalData(null);
     }
   }, [isOpen, initialData, mode]);
 
   const isFormChanged = useMemo(() => {
     if (mode !== 'edit' || !formData || !originalData) return false;
-    // Penambahan file baru juga dianggap sebagai perubahan
     if (formData.file) return true;
     return JSON.stringify(formData) !== JSON.stringify(originalData);
   }, [formData, originalData, mode]);
@@ -84,17 +77,18 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
     setIsSubmitting(false);
   };
 
-  const isEditMode = mode === 'edit';
+  const isSubmitDisabled =
+    isSubmitting || (mode === 'edit' && !isFormChanged) || !formData.clientId;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? 'Edit Contract' : 'Upload New Contract'}
+            {mode === 'edit' ? 'Edit Contract' : 'Upload New Contract'}
           </DialogTitle>
           <DialogDescription>
-            {isEditMode
+            {mode === 'edit'
               ? 'Update contract information.'
               : 'Upload a new client contract.'}
           </DialogDescription>
@@ -102,32 +96,35 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="clientName">Client Name</Label>
-            {/* FIX 2: Menambahkan tipe eksplisit untuk parameter 'prev' */}
             <ClientCombobox
               clients={clients}
-              value={formData.clientName}
+              value={{ id: formData.clientId, name: formData.clientName }}
               onChange={(value) =>
-                setFormData((prev: ContractFormState) => ({
+                setFormData((prev) => ({
                   ...prev,
-                  clientName: value,
+                  clientId: value.id,
+                  clientName: value.name,
                 }))
               }
             />
           </div>
+          {/* ... sisa form tidak berubah ... */}
           <div className="space-y-2">
             <Label htmlFor="file">
-              {isEditMode ? 'New Contract File (Optional)' : 'Contract File'}
+              {mode === 'edit'
+                ? 'New Contract File (Optional)'
+                : 'Contract File'}
             </Label>
             <Input
               id="file"
               type="file"
               onChange={(e) =>
-                setFormData((prev: ContractFormState) => ({
+                setFormData((prev) => ({
                   ...prev,
                   file: e.target.files?.[0] || null,
                 }))
               }
-              required={!isEditMode}
+              required={mode !== 'edit'}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -138,7 +135,7 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
                 type="date"
                 value={formData.startDate}
                 onChange={(e) =>
-                  setFormData((prev: ContractFormState) => ({
+                  setFormData((prev) => ({
                     ...prev,
                     startDate: e.target.value,
                   }))
@@ -153,10 +150,7 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
                 type="date"
                 value={formData.endDate}
                 onChange={(e) =>
-                  setFormData((prev: ContractFormState) => ({
-                    ...prev,
-                    endDate: e.target.value,
-                  }))
+                  setFormData((prev) => ({ ...prev, endDate: e.target.value }))
                 }
                 required
               />
@@ -168,10 +162,7 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
               id="notes"
               value={formData.notes}
               onChange={(e) =>
-                setFormData((prev: ContractFormState) => ({
-                  ...prev,
-                  notes: e.target.value,
-                }))
+                setFormData((prev) => ({ ...prev, notes: e.target.value }))
               }
               rows={3}
             />
@@ -180,20 +171,14 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
             label="Client Emails"
             emails={formData.clientEmails}
             setEmails={(emails) =>
-              setFormData((prev: ContractFormState) => ({
-                ...prev,
-                clientEmails: emails,
-              }))
+              setFormData((prev) => ({ ...prev, clientEmails: emails }))
             }
           />
           <EmailInputManager
             label="Internal Emails"
             emails={formData.internalEmails}
             setEmails={(emails) =>
-              setFormData((prev: ContractFormState) => ({
-                ...prev,
-                internalEmails: emails,
-              }))
+              setFormData((prev) => ({ ...prev, internalEmails: emails }))
             }
           />
 
@@ -203,14 +188,11 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
                 Cancel
               </Button>
             </DialogClose>
-            <Button
-              type="submit"
-              disabled={isSubmitting || (isEditMode && !isFormChanged)}
-            >
+            <Button type="submit" disabled={isSubmitDisabled}>
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isEditMode ? 'Update Contract' : 'Submit'}
+              {mode === 'edit' ? 'Update Contract' : 'Submit'}
             </Button>
           </DialogFooter>
         </form>

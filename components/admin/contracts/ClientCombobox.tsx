@@ -21,8 +21,8 @@ import type { Client } from '@/lib/adminStore';
 
 interface ClientComboboxProps {
   clients: Client[];
-  value: string;
-  onChange: (value: string) => void;
+  value: { id: number | null; name: string };
+  onChange: (value: { id: number | null; name: string }) => void;
 }
 
 export const ClientCombobox: React.FC<ClientComboboxProps> = ({
@@ -31,23 +31,26 @@ export const ClientCombobox: React.FC<ClientComboboxProps> = ({
   onChange,
 }) => {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
 
-  const handleSelect = (clientName: string) => {
-    onChange(clientName);
-    setSearch(clientName);
+  const handleSelect = (client: Client) => {
+    if (client.id === value.id) {
+      onChange({ id: null, name: '' });
+    } else {
+      onChange({ id: client.id, name: client.name });
+    }
     setOpen(false);
   };
 
-  const handleInputChange = (searchValue: string) => {
-    setSearch(searchValue);
-    onChange(searchValue);
+  const handleInputChange = (searchQuery: string) => {
+    const matchedClient = clients.find(
+      (c) => c.name.toLowerCase() === searchQuery.toLowerCase()
+    );
+    if (matchedClient) {
+      onChange({ id: matchedClient.id, name: matchedClient.name });
+    } else {
+      onChange({ id: null, name: searchQuery });
+    }
   };
-
-  const displayValue = value
-    ? clients.find((c) => c.name.toLowerCase() === value.toLowerCase())?.name ||
-      value
-    : 'Pilih atau ketik nama client...';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,35 +59,37 @@ export const ClientCombobox: React.FC<ClientComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between font-normal"
         >
-          {displayValue}
+          {value.name ? value.name : 'Pilih atau ketik nama client...'}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
           <CommandInput
-            placeholder="Cari client atau ketik baru..."
-            value={search}
+            placeholder="Cari client..."
+            value={value.name}
             onValueChange={handleInputChange}
           />
-          {/* FIX: Menambahkan max-height dan overflow agar list bisa di-scroll */}
           <CommandList className="max-h-[250px] overflow-y-auto">
-            <CommandEmpty>Client tidak ditemukan.</CommandEmpty>
+            <CommandEmpty>
+              <p className="p-4 text-sm text-center">
+                Client tidak ditemukan. <br /> Silakan buat client terlebih
+                dahulu.
+              </p>
+            </CommandEmpty>
             <CommandGroup>
               {clients.map((client) => (
                 <CommandItem
                   key={client.id}
                   value={client.name}
-                  onSelect={() => handleSelect(client.name)}
+                  onSelect={() => handleSelect(client)}
                 >
                   <Check
                     className={cn(
                       'mr-2 h-4 w-4',
-                      value.toLowerCase() === client.name.toLowerCase()
-                        ? 'opacity-100'
-                        : 'opacity-0'
+                      value.id === client.id ? 'opacity-100' : 'opacity-0'
                     )}
                   />
                   {client.name}
