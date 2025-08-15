@@ -213,7 +213,8 @@ export function BillingDailyServiceBreakdown({
           const serviceData = day.services.find(
             (s) => s.service === serviceName
           );
-          chartEntry[serviceName] = serviceData ? serviceData.cost : 0;
+          const cost = serviceData ? serviceData.cost : 0;
+          chartEntry[serviceName] = Math.max(0, cost);
         });
         return chartEntry;
       });

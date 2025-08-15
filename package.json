@@ -45,6 +45,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "jose": "^6.0.11",
@@ -62,10 +63,10 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^9.0.0",
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
-    "zustand": "^5.0.5",
-    "uuid": "^9.0.0"
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9",

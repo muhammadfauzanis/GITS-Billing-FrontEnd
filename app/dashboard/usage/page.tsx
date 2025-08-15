@@ -344,9 +344,9 @@ function UsagePageContent() {
             </Tabs>
           </TabsContent>
 
-          <TabsContent value="monthly" className="mt-6">
+          <TabsContent value="monthly" className="mt-2">
             <Tabs value={subTab} onValueChange={handleSubTabChange}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="">
                 <TabsTrigger value="service">Services</TabsTrigger>
                 <TabsTrigger value="project">Projects</TabsTrigger>
               </TabsList>

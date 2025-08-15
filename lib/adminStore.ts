@@ -5,8 +5,14 @@ import {
   deleteUser as apiDeleteUser,
   updateUserClientId as apiUpdateUserClient,
   registerUser as apiRegisterUser,
+  getContracts,
+  createContract,
+  updateContract,
+  deleteContract,
 } from './api/index';
+import { contractFormToFormData } from './utils';
 
+// --- TIPE DATA ---
 export interface User {
   id: number;
   email: string;
@@ -15,29 +21,68 @@ export interface User {
   status: string;
   createdAt: string;
 }
+
 export interface Client {
   id: number;
   name: string;
 }
 
+export type ContractStatus = 'active' | 'expiring_soon' | 'expired' | 'all';
+
+export interface Contract {
+  id: string;
+  client_id: number;
+  client_name: string;
+  start_date: string;
+  end_date: string;
+  notes: string | null;
+  file_url: string;
+  client_emails: string[];
+  // internal_emails tidak lagi menjadi bagian dari data kontrak utama
+  created_at: string;
+}
+
+// --- PERUBAHAN DI SINI ---
+export interface ContractFormState {
+  clientId: number | null;
+  clientName: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+  file: File | null;
+  clientEmails: string[];
+  // Hapus internalEmails dari sini
+  // internalEmails: string[];
+}
+
 interface AdminState {
   users: User[];
   clients: Client[];
+  contracts: Contract[];
   stats: { totalUsers: number; totalClients: number; activeUsers: number };
   hasFetched: {
     users: boolean;
     clients: boolean;
     stats: boolean;
+    contracts: boolean;
   };
   loading: {
     users: boolean;
     clients: boolean;
     stats: boolean;
+    contracts: boolean;
   };
   error: string | null;
   fetchUsers: () => Promise<void>;
   fetchClients: () => Promise<void>;
   fetchStats: () => Promise<void>;
+  fetchContracts: () => Promise<void>;
+  addContract: (formData: ContractFormState) => Promise<void>;
+  editContract: (
+    contractId: string,
+    formData: ContractFormState
+  ) => Promise<void>;
+  removeContract: (contractId: string) => Promise<void>;
   addUser: (userData: any) => Promise<void>;
   deleteUser: (userId: number) => Promise<void>;
   updateUserClient: (userId: number, clientId: number) => Promise<void>;
@@ -46,9 +91,10 @@ interface AdminState {
 export const useAdminStore = create<AdminState>((set, get) => ({
   users: [],
   clients: [],
+  contracts: [],
   stats: { totalUsers: 0, totalClients: 0, activeUsers: 0 },
-  hasFetched: { users: false, clients: false, stats: false },
-  loading: { users: false, clients: false, stats: false },
+  hasFetched: { users: false, clients: false, stats: false, contracts: false },
+  loading: { users: false, clients: false, stats: false, contracts: false },
   error: null,
 
   fetchUsers: async () => {
@@ -122,9 +168,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
   deleteUser: async (userId) => {
     const originalUsers = get().users;
-    set((state) => ({
-      users: state.users.filter((u) => u.id !== userId),
-    }));
+    set((state) => ({ users: state.users.filter((u) => u.id !== userId) }));
     try {
       await apiDeleteUser(userId);
       set({ hasFetched: { ...get().hasFetched, stats: false } });
@@ -155,6 +199,45 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         users: originalUsers,
         error: err.message || 'Gagal update client',
       });
+    }
+  },
+
+  fetchContracts: async () => {
+    set((state) => ({
+      loading: { ...state.loading, contracts: true },
+      error: null,
+    }));
+    try {
+      const contractsData = await getContracts();
+      set({
+        contracts: contractsData || [],
+        hasFetched: { ...get().hasFetched, contracts: true },
+      });
+    } catch (err: any) {
+      set({ error: err.message || 'Gagal memuat data kontrak' });
+    } finally {
+      set((state) => ({ loading: { ...state.loading, contracts: false } }));
+    }
+  },
+
+  addContract: async (formData: ContractFormState) => {
+    const data = contractFormToFormData(formData, get().clients);
+    await createContract(data);
+    set((state) => ({ hasFetched: { ...state.hasFetched, contracts: false } }));
+  },
+
+  editContract: async (contractId: string, formData: ContractFormState) => {
+    const data = contractFormToFormData(formData, get().clients);
+    await updateContract(contractId, data);
+    set((state) => ({ hasFetched: { ...state.hasFetched, contracts: false } }));
+  },
+
+  removeContract: async (contractId: string) => {
+    try {
+      await deleteContract(contractId);
+    } catch (error) {
+      console.error('Failed to delete contract via API:', error);
+      throw error;
     }
   },
 }));

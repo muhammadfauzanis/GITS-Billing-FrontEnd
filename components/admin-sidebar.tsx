@@ -3,7 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Users, UserPlus, Home, Settings, Building } from 'lucide-react';
+import {
+  Users,
+  UserPlus,
+  Home,
+  Settings,
+  Building,
+  FileText, // <-- Tambahkan icon baru
+} from 'lucide-react';
 
 const sidebarItems = [
   {
@@ -20,6 +27,12 @@ const sidebarItems = [
     title: 'Buat Akun',
     href: '/admin/create-user',
     icon: UserPlus,
+  },
+  // Tambahkan item baru di sini
+  {
+    title: 'Kelola Kontrak',
+    href: '/admin/contracts',
+    icon: FileText,
   },
   // {
   //   title: "Clients",
@@ -47,8 +60,8 @@ export function AdminSidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium',
                 pathname === item.href
-                  ? 'bg-red-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-red-600 text-white' // Style aktif
+                  : 'text-gray-600 hover:bg-gray-100' // Style non-aktif
               )}
             >
               <item.icon className="h-4 w-4" />
