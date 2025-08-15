@@ -38,10 +38,11 @@ export interface Contract {
   notes: string | null;
   file_url: string;
   client_emails: string[];
-  internal_emails: string[];
+  // internal_emails tidak lagi menjadi bagian dari data kontrak utama
   created_at: string;
 }
 
+// --- PERUBAHAN DI SINI ---
 export interface ContractFormState {
   clientId: number | null;
   clientName: string;
@@ -50,7 +51,8 @@ export interface ContractFormState {
   notes: string;
   file: File | null;
   clientEmails: string[];
-  internalEmails: string[];
+  // Hapus internalEmails dari sini
+  // internalEmails: string[];
 }
 
 interface AdminState {
@@ -95,7 +97,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   loading: { users: false, clients: false, stats: false, contracts: false },
   error: null,
 
-  // --- IMPLEMENTASI LENGKAP UNTUK SEMUA ACTIONS ---
   fetchUsers: async () => {
     if (get().hasFetched.users) return;
     set((state) => ({
@@ -135,7 +136,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   fetchStats: async () => {
-    // Implementasi ini juga memerlukan fetchUsers dan fetchClients yang benar
     if (get().hasFetched.stats) return;
     set((state) => ({
       loading: { ...state.loading, stats: true },
@@ -233,9 +233,11 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   removeContract: async (contractId: string) => {
-    await deleteContract(contractId);
-    set((state) => ({
-      contracts: state.contracts.filter((c) => c.id.toString() !== contractId),
-    }));
+    try {
+      await deleteContract(contractId);
+    } catch (error) {
+      console.error('Failed to delete contract via API:', error);
+      throw error;
+    }
   },
 }));

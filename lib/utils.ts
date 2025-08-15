@@ -16,6 +16,7 @@ export function formatCurrency(value: number | null | undefined): string {
   })}`;
 }
 
+// --- PERUBAHAN DI SINI ---
 export const contractFormToFormData = (
   formData: ContractFormState,
   clients: Client[]
@@ -39,10 +40,6 @@ export const contractFormToFormData = (
   formData.clientEmails
     .filter((email) => email)
     .forEach((email) => data.append('client_contact_emails', email));
-  formData.internalEmails
-    .filter((email) => email)
-    .forEach((email) => data.append('internal_notification_emails', email));
-
   if (formData.file) {
     data.append('file', formData.file);
   }

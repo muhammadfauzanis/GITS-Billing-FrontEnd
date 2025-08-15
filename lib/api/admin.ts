@@ -64,6 +64,17 @@ export const getContracts = async () => {
   }
 };
 
+export const getContractDetails = async (contractId: string) => {
+  try {
+    const response = await axiosInstance.get(`/admin/contracts/${contractId}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch contract details'
+    );
+  }
+};
+
 export const createContract = async (formData: FormData) => {
   try {
     const response = await axiosInstance.post('/admin/contracts/', formData, {
@@ -106,6 +117,47 @@ export const deleteContract = async (contractId: string) => {
   } catch (error: any) {
     throw new Error(
       error.response?.data?.detail || 'Failed to delete contract'
+    );
+  }
+};
+
+export const getInternalEmails = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/settings/internal-emails');
+    return response.data.emails || [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch internal emails'
+    );
+  }
+};
+
+export const addInternalEmail = async (email: string) => {
+  try {
+    const response = await axiosInstance.post(
+      '/admin/settings/internal-emails',
+      { email }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to add internal email'
+    );
+  }
+};
+
+export const deleteInternalEmail = async (email: string) => {
+  try {
+    const response = await axiosInstance.delete(
+      '/admin/settings/internal-emails',
+      {
+        data: { email },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to delete internal email'
     );
   }
 };

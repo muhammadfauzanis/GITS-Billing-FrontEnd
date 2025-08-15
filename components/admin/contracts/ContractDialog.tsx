@@ -19,6 +19,7 @@ import { ClientCombobox } from './ClientCombobox';
 import { EmailInputManager } from './EmailInputManager';
 import { ContractFormState } from '@/lib/adminStore';
 import type { Client } from '@/lib/adminStore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ContractDialogProps {
   mode: 'add' | 'edit';
@@ -29,6 +30,7 @@ interface ContractDialogProps {
   clients: Client[];
 }
 
+// --- PERUBAHAN DI SINI ---
 const EMPTY_FORM: ContractFormState = {
   clientId: null,
   clientName: '',
@@ -37,7 +39,7 @@ const EMPTY_FORM: ContractFormState = {
   notes: '',
   file: null,
   clientEmails: [''],
-  internalEmails: [''],
+  // Hapus internalEmails
 };
 
 export const ContractDialog: React.FC<ContractDialogProps> = ({
@@ -80,6 +82,39 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
   const isSubmitDisabled =
     isSubmitting || (mode === 'edit' && !isFormChanged) || !formData.clientId;
 
+  if (mode === 'edit' && initialData === null) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>Edit Contract</DialogTitle>
+            <DialogDescription>Loading contract details...</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
@@ -108,7 +143,6 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
               }
             />
           </div>
-          {/* ... sisa form tidak berubah ... */}
           <div className="space-y-2">
             <Label htmlFor="file">
               {mode === 'edit'
@@ -172,13 +206,6 @@ export const ContractDialog: React.FC<ContractDialogProps> = ({
             emails={formData.clientEmails}
             setEmails={(emails) =>
               setFormData((prev) => ({ ...prev, clientEmails: emails }))
-            }
-          />
-          <EmailInputManager
-            label="Internal Emails"
-            emails={formData.internalEmails}
-            setEmails={(emails) =>
-              setFormData((prev) => ({ ...prev, internalEmails: emails }))
             }
           />
 

@@ -21,6 +21,7 @@ import { getContractStatus } from '@/lib/utils';
 import { ContractDialog } from '@/components/admin/contracts/ContractDialog';
 import { ContractStatsCards } from '@/components/admin/contracts/ContractStatsCards';
 import { ContractsTable } from '@/components/admin/contracts/ContractsTable';
+import { getContractDetails } from '@/lib/api/admin';
 
 export default function ContractsPage() {
   const { toast } = useToast();
@@ -37,10 +38,17 @@ export default function ContractsPage() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [editingContractId, setEditingContractId] = useState<string | null>(
+    null
+  );
+  const [editingContractDetails, setEditingContractDetails] =
+    useState<ContractFormState | null>(null);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [deletingContractId, setDeletingContractId] = useState<string | null>(
+    null
+  );
   const [filterStatus, setFilterStatus] = useState<ContractStatus>('all');
 
-  // FIX: Dependency array disederhanakan untuk mencegah infinite loop
   useEffect(() => {
     fetchClients();
     fetchContracts();
@@ -61,7 +69,7 @@ export default function ContractsPage() {
         description: 'New contract has been uploaded.',
       });
       setIsAddDialogOpen(false);
-      await fetchContracts(); // Re-fetch
+      await fetchContracts();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -72,12 +80,14 @@ export default function ContractsPage() {
   };
 
   const handleEditSubmit = async (formData: ContractFormState) => {
-    if (!editingContract) return;
+    if (!editingContractId) return;
     try {
-      await editContract(editingContract.id, formData);
+      await editContract(editingContractId.toString(), formData);
       toast({ title: 'Success', description: 'Contract has been updated.' });
       setIsEditDialogOpen(false);
-      await fetchContracts(); // Re-fetch
+      setEditingContractId(null);
+      setEditingContractDetails(null);
+      await fetchContracts();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -88,42 +98,52 @@ export default function ContractsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    setDeletingContractId(id);
     try {
       await removeContract(id);
       toast({ title: 'Success', description: 'Contract has been deleted.' });
+      await fetchContracts();
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setDeletingContractId(null);
     }
   };
 
-  const openEditDialog = (contract: Contract) => {
-    setEditingContract(contract);
+  const openEditDialog = async (contract: Contract) => {
+    setIsFetchingDetails(true);
     setIsEditDialogOpen(true);
-  };
+    setEditingContractId(contract.id);
 
-  const editingContractInitialData = useMemo<ContractFormState | null>(() => {
-    if (!editingContract) return null;
-    return {
-      clientId: editingContract.client_id,
-      clientName: editingContract.client_name,
-      startDate: editingContract.start_date,
-      endDate: editingContract.end_date,
-      notes: editingContract.notes || '',
-      file: null,
-      clientEmails:
-        editingContract.client_emails?.length > 0
-          ? editingContract.client_emails
-          : [''],
-      internalEmails:
-        editingContract.internal_emails?.length > 0
-          ? editingContract.internal_emails
-          : [''],
-    };
-  }, [editingContract]);
+    try {
+      const details = await getContractDetails(contract.id);
+      setEditingContractDetails({
+        clientId: details.client_id,
+        clientName: details.client_name,
+        startDate: new Date(details.start_date).toISOString().split('T')[0],
+        endDate: new Date(details.end_date).toISOString().split('T')[0],
+        notes: details.notes || '',
+        file: null,
+        clientEmails:
+          details.client_contact_emails?.length > 0
+            ? details.client_contact_emails
+            : [''],
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Gagal Memuat Detail',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setIsEditDialogOpen(false);
+    } finally {
+      setIsFetchingDetails(false);
+    }
+  };
 
   if (loading.contracts && contracts.length === 0) {
     return (
@@ -194,6 +214,7 @@ export default function ContractsPage() {
             contracts={filteredContracts}
             onEdit={openEditDialog}
             onDelete={handleDelete}
+            deletingContractId={deletingContractId}
           />
         </CardContent>
       </Card>
@@ -208,9 +229,15 @@ export default function ContractsPage() {
       <ContractDialog
         mode="edit"
         isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            setEditingContractDetails(null);
+            setEditingContractId(null);
+          }
+        }}
         onSubmit={handleEditSubmit}
-        initialData={editingContractInitialData}
+        initialData={isFetchingDetails ? null : editingContractDetails}
         clients={clients}
       />
     </div>

@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Contract, ContractStatus } from '@/lib/adminStore';
 import { getContractStatus, formatDate } from '@/lib/utils';
 
@@ -63,12 +63,14 @@ interface ContractsTableProps {
   contracts: Contract[];
   onEdit: (contract: Contract) => void;
   onDelete: (id: string) => void;
+  deletingContractId: string | null;
 }
 
 export const ContractsTable: React.FC<ContractsTableProps> = ({
   contracts,
   onEdit,
   onDelete,
+  deletingContractId,
 }) => {
   return (
     <Table>
@@ -86,7 +88,6 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
         {contracts.length > 0 ? (
           contracts.map((contract) => (
             <TableRow key={contract.id}>
-              {/* FIX: Menggunakan snake_case sesuai tipe data backend */}
               <TableCell className="font-medium">
                 {contract.client_name}
               </TableCell>
@@ -96,7 +97,6 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
                 {getStatusBadge(getContractStatus(contract.end_date))}
               </TableCell>
               <TableCell className="max-w-[200px] truncate">
-                {/* FIX: Menambahkan null check untuk notes */}
                 {contract.notes?.substring(0, 50)}
                 {contract.notes && contract.notes.length > 50 && (
                   <Dialog>
@@ -142,8 +142,13 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
                         variant="ghost"
                         size="icon"
                         className="text-red-500 hover:text-red-700"
+                        disabled={deletingContractId === contract.id}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {deletingContractId === contract.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -160,6 +165,7 @@ export const ContractsTable: React.FC<ContractsTableProps> = ({
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => onDelete(contract.id)}
+                          disabled={!!deletingContractId}
                         >
                           Delete
                         </AlertDialogAction>

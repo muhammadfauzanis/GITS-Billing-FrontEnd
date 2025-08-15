@@ -53,7 +53,7 @@ export const ClientCombobox: React.FC<ClientComboboxProps> = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -72,7 +72,7 @@ export const ClientCombobox: React.FC<ClientComboboxProps> = ({
             value={value.name}
             onValueChange={handleInputChange}
           />
-          <CommandList className="max-h-[250px] overflow-y-auto">
+          <CommandList>
             <CommandEmpty>
               <p className="p-4 text-sm text-center">
                 Client tidak ditemukan. <br /> Silakan buat client terlebih
