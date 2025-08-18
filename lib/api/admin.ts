@@ -53,9 +53,16 @@ export const getClients = async () => {
   }
 };
 
-export const getContracts = async () => {
+export const getContracts = async (
+  month?: number | null,
+  year?: number | null
+) => {
   try {
-    const response = await axiosInstance.get('/admin/contracts/');
+    const params = new URLSearchParams();
+    if (month) params.append('month', month.toString());
+    if (year) params.append('year', year.toString());
+
+    const response = await axiosInstance.get('/admin/contracts/', { params });
     return response.data;
   } catch (error: any) {
     throw new Error(

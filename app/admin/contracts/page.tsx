@@ -9,6 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -49,10 +56,36 @@ export default function ContractsPage() {
   );
   const [filterStatus, setFilterStatus] = useState<ContractStatus>('all');
 
+  const [filterDate, setFilterDate] = useState({
+    month: 'all',
+    year: new Date().getFullYear().toString(),
+  });
+
   useEffect(() => {
     fetchClients();
-    fetchContracts();
-  }, [fetchClients, fetchContracts]);
+    const monthToSend =
+      filterDate.month === 'all' ? null : Number(filterDate.month);
+    const yearToSend =
+      filterDate.month === 'all' ? null : Number(filterDate.year);
+    fetchContracts(monthToSend, yearToSend);
+  }, [fetchClients, fetchContracts, filterDate]);
+
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+      })),
+    []
+  );
+
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 4 }, (_, i) => ({
+      value: String(currentYear - 1 + i),
+      label: String(currentYear - 1 + i),
+    }));
+  }, []);
 
   const filteredContracts = useMemo(() => {
     if (filterStatus === 'all') return contracts;
@@ -60,6 +93,14 @@ export default function ContractsPage() {
       (c) => getContractStatus(c.end_date) === filterStatus
     );
   }, [contracts, filterStatus]);
+
+  const refetchContractsWithFilter = async () => {
+    const monthToSend =
+      filterDate.month === 'all' ? null : Number(filterDate.month);
+    const yearToSend =
+      filterDate.month === 'all' ? null : Number(filterDate.year);
+    await fetchContracts(monthToSend, yearToSend);
+  };
 
   const handleAddSubmit = async (formData: ContractFormState) => {
     try {
@@ -69,7 +110,7 @@ export default function ContractsPage() {
         description: 'New contract has been uploaded.',
       });
       setIsAddDialogOpen(false);
-      await fetchContracts();
+      await refetchContractsWithFilter();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -87,7 +128,7 @@ export default function ContractsPage() {
       setIsEditDialogOpen(false);
       setEditingContractId(null);
       setEditingContractDetails(null);
-      await fetchContracts();
+      await refetchContractsWithFilter();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -102,7 +143,7 @@ export default function ContractsPage() {
     try {
       await removeContract(id);
       toast({ title: 'Success', description: 'Contract has been deleted.' });
-      await fetchContracts();
+      await refetchContractsWithFilter();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -175,41 +216,78 @@ export default function ContractsPage() {
                 A list of all client contracts and their status.
               </CardDescription>
             </div>
+            {/* --- BAGIAN FILTER BULAN DAN TAHUN --- */}
             <div className="flex items-center space-x-2">
-              <Button
-                variant={filterStatus === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('all')}
-              >
-                All ({contracts.length})
-              </Button>
-              <Button
-                variant={filterStatus === 'active' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('active')}
-              >
-                Active
-              </Button>
-              <Button
-                variant={
-                  filterStatus === 'expiring_soon' ? 'default' : 'outline'
+              <Select
+                value={filterDate.month}
+                onValueChange={(value) =>
+                  setFilterDate((prev) => ({ ...prev, month: value }))
                 }
-                size="sm"
-                onClick={() => setFilterStatus('expiring_soon')}
               >
-                Expiring
-              </Button>
-              <Button
-                variant={filterStatus === 'expired' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('expired')}
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Pilih Bulan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Bulan</SelectItem>
+                  {months.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filterDate.year}
+                onValueChange={(value) =>
+                  setFilterDate((prev) => ({ ...prev, year: value }))
+                }
+                disabled={filterDate.month === 'all'}
               >
-                Expired
-              </Button>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder="Pilih Tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y.value} value={y.value}>
+                      {y.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center space-x-2 mb-4">
+            <Button
+              variant={filterStatus === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('all')}
+            >
+              All ({filteredContracts.length})
+            </Button>
+            <Button
+              variant={filterStatus === 'active' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('active')}
+            >
+              Active
+            </Button>
+            <Button
+              variant={filterStatus === 'expiring_soon' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('expiring_soon')}
+            >
+              Expiring
+            </Button>
+            <Button
+              variant={filterStatus === 'expired' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('expired')}
+            >
+              Expired
+            </Button>
+          </div>
           <ContractsTable
             contracts={filteredContracts}
             onEdit={openEditDialog}

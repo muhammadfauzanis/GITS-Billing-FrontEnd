@@ -76,7 +76,10 @@ interface AdminState {
   fetchUsers: () => Promise<void>;
   fetchClients: () => Promise<void>;
   fetchStats: () => Promise<void>;
-  fetchContracts: () => Promise<void>;
+  fetchContracts: (
+    month?: number | null,
+    year?: number | null
+  ) => Promise<void>;
   addContract: (formData: ContractFormState) => Promise<void>;
   editContract: (
     contractId: string,
@@ -202,13 +205,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  fetchContracts: async () => {
+  fetchContracts: async (month?: number | null, year?: number | null) => {
     set((state) => ({
       loading: { ...state.loading, contracts: true },
       error: null,
     }));
     try {
-      const contractsData = await getContracts();
+      const contractsData = await getContracts(month, year);
       set({
         contracts: contractsData || [],
         hasFetched: { ...get().hasFetched, contracts: true },
