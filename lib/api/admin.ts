@@ -168,3 +168,100 @@ export const deleteInternalEmail = async (email: string) => {
     );
   }
 };
+
+// GOOGLE WORKSPACE
+
+export const getGwClients = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/gw-clients');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch Google Workspace clients'
+    );
+  }
+};
+
+export const getGwContracts = async (
+  month?: number | null,
+  year?: number | null
+) => {
+  try {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month.toString());
+    if (year) params.append('year', year.toString());
+
+    const response = await axiosInstance.get('/admin/gw-contracts/', {
+      params,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail ||
+        'Failed to fetch Google Workspace contracts'
+    );
+  }
+};
+
+export const getGwContractDetails = async (contractId: string) => {
+  try {
+    const response = await axiosInstance.get(
+      `/admin/gw-contracts/${contractId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch GW contract details'
+    );
+  }
+};
+
+export const createGwContract = async (formData: FormData) => {
+  try {
+    const response = await axiosInstance.post(
+      '/admin/gw-contracts/',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to create GW contract'
+    );
+  }
+};
+
+export const updateGwContract = async (
+  contractId: string,
+  formData: FormData
+) => {
+  try {
+    const response = await axiosInstance.patch(
+      `/admin/gw-contracts/${contractId}`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to update GW contract'
+    );
+  }
+};
+
+export const deleteGwContract = async (contractId: string) => {
+  try {
+    const response = await axiosInstance.delete(
+      `/admin/gw-contracts/${contractId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to delete GW contract'
+    );
+  }
+};

@@ -1,104 +1,52 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { Client } from '@/lib/adminStore';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Client, GwClient } from '@/lib/adminStore';
 
+// Komponen ini sekarang bisa menerima klien GCP atau GW
 interface ClientComboboxProps {
-  clients: Client[];
-  value: { id: number | null; name: string };
-  onChange: (value: { id: number | null; name: string }) => void;
+  clients: (Client | GwClient)[];
+  value: number | null;
+  onChange: (clientId: string) => void;
+  placeholder?: string;
 }
 
 export const ClientCombobox: React.FC<ClientComboboxProps> = ({
   clients,
   value,
   onChange,
+  placeholder = 'Pilih client...',
 }) => {
-  const [open, setOpen] = useState(false);
-
-  const handleSelect = (client: Client) => {
-    if (client.id === value.id) {
-      onChange({ id: null, name: '' });
-    } else {
-      onChange({ id: client.id, name: client.name });
-    }
-    setOpen(false);
-  };
-
-  const handleInputChange = (searchQuery: string) => {
-    const matchedClient = clients.find(
-      (c) => c.name.toLowerCase() === searchQuery.toLowerCase()
-    );
-    if (matchedClient) {
-      onChange({ id: matchedClient.id, name: matchedClient.name });
-    } else {
-      onChange({ id: null, name: searchQuery });
-    }
-  };
-
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          {value.name ? value.name : 'Pilih atau ketik nama client...'}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command>
-          <CommandInput
-            placeholder="Cari client..."
-            value={value.name}
-            onValueChange={handleInputChange}
-          />
-          <CommandList>
-            <CommandEmpty>
-              <p className="p-4 text-sm text-center">
-                Client tidak ditemukan. <br /> Silakan buat client terlebih
-                dahulu.
-              </p>
-            </CommandEmpty>
-            <CommandGroup>
-              {clients.map((client) => (
-                <CommandItem
-                  key={client.id}
-                  value={client.name}
-                  onSelect={() => handleSelect(client)}
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value.id === client.id ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  {client.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Select value={value ? value.toString() : ''} onValueChange={onChange}>
+      <SelectTrigger className="w-full justify-between font-normal">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      {/* SelectContent akan otomatis menangani z-index dan positioning di dalam dialog */}
+      <SelectContent>
+        {clients.length > 0 ? (
+          clients.map((client) => (
+            // Gunakan kombinasi ID dan nama untuk key yang unik jika ada kemungkinan ID duplikat antar tipe
+            <SelectItem
+              key={`${client.id}-${client.name}`}
+              value={client.id.toString()}
+            >
+              {client.name}
+            </SelectItem>
+          ))
+        ) : (
+          <div className="p-4 text-sm text-center text-muted-foreground">
+            Tidak ada client ditemukan.
+          </div>
+        )}
+      </SelectContent>
+    </Select>
   );
 };

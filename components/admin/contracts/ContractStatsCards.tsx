@@ -18,7 +18,8 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Contract, ContractStatus } from '@/lib/adminStore';
+// Impor kedua tipe kontrak
+import { Contract, GwContract, ContractStatus } from '@/lib/adminStore';
 import { EmailInputBox } from './EmailInputBox';
 import { getInternalEmails } from '@/lib/api/admin';
 
@@ -33,7 +34,9 @@ const getContractStatus = (endDate: string): ContractStatus => {
   return 'active';
 };
 
-const getContractStats = (contracts: Contract[]) => {
+// --- PERUBAHAN TIPE DI SINI ---
+// Fungsi ini sekarang menerima array yang bisa berisi Contract atau GwContract
+const getContractStats = (contracts: (Contract | GwContract)[]) => {
   const expiringContracts = contracts.filter(
     (c) => getContractStatus(c.end_date) === 'expiring_soon'
   );
@@ -51,16 +54,15 @@ const getContractStats = (contracts: Contract[]) => {
   };
 };
 
-export const ContractStatsCards: React.FC<{ contracts: Contract[] }> = ({
-  contracts,
-}) => {
+export const ContractStatsCards: React.FC<{
+  contracts: (Contract | GwContract)[];
+}> = ({ contracts }) => {
   const stats = useMemo(() => getContractStats(contracts), [contracts]);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [internalEmailCount, setInternalEmailCount] = useState(0);
   const [isLoadingEmails, setIsLoadingEmails] = useState(true);
 
   useEffect(() => {
-    // Hanya fetch jumlah email saat komponen pertama kali dimuat
     getInternalEmails()
       .then((emailList: string[]) => {
         setInternalEmailCount(emailList.length);

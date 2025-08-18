@@ -30,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Eye, Edit, Trash2, Loader2 } from 'lucide-react';
-import { Contract, ContractStatus } from '@/lib/adminStore';
+import { Contract, GwContract, ContractStatus } from '@/lib/adminStore';
 import { getContractStatus, formatDate } from '@/lib/utils';
 
 const getStatusBadge = (status: ContractStatus) => {
@@ -60,18 +60,29 @@ const getStatusBadge = (status: ContractStatus) => {
 };
 
 interface ContractsTableProps {
-  contracts: Contract[];
-  onEdit: (contract: Contract) => void;
-  onDelete: (id: string) => void;
+  contracts: (Contract | GwContract)[];
+  contractType: 'gcp' | 'gw';
+  loading: boolean;
   deletingContractId: string | null;
+  onEdit: (contract: Contract | GwContract) => void;
+  onDelete: (id: string) => void;
 }
 
 export const ContractsTable: React.FC<ContractsTableProps> = ({
   contracts,
+  contractType,
+  loading,
+  deletingContractId,
   onEdit,
   onDelete,
-  deletingContractId,
 }) => {
+  if (loading && contracts.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
   return (
     <Table>
       <TableHeader>

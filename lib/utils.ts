@@ -1,6 +1,12 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { Client, ContractFormState, ContractStatus } from './adminStore';
+import type {
+  Client,
+  ContractFormState,
+  ContractStatus,
+  GwClient,
+  GwContractFormState,
+} from './adminStore';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -65,4 +71,29 @@ export const formatDate = (dateString: string) => {
     month: 'long',
     day: 'numeric',
   });
+};
+
+export const gwContractFormToFormData = (
+  formData: GwContractFormState,
+  clients: GwClient[]
+): FormData => {
+  const data = new FormData();
+
+  // Client ID untuk GW
+  if (formData.clientGwId) {
+    data.append('client_gw_id', formData.clientGwId.toString());
+  }
+
+  data.append('start_date', formData.startDate);
+  data.append('end_date', formData.endDate);
+  data.append('notes', formData.notes || '');
+
+  formData.clientEmails
+    .filter((email) => email)
+    .forEach((email) => data.append('client_contact_emails', email));
+
+  if (formData.file) {
+    data.append('file', formData.file);
+  }
+  return data;
 };
