@@ -1,4 +1,8 @@
 import { axiosInstance } from './index';
+import {
+  AdminInvoiceParams,
+  AdminUpdateInvoicePayload,
+} from '../store/admin/types';
 
 export const getUsers = async () => {
   try {
@@ -262,6 +266,36 @@ export const deleteGwContract = async (contractId: string) => {
   } catch (error: any) {
     throw new Error(
       error.response?.data?.detail || 'Failed to delete GW contract'
+    );
+  }
+};
+
+export const getAdminInvoices = async (params: AdminInvoiceParams) => {
+  try {
+    const response = await axiosInstance.get('/admin/invoices/admin/all', {
+      params,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch admin invoices'
+    );
+  }
+};
+
+export const updateAdminInvoiceDetails = async (
+  invoiceId: number,
+  payload: AdminUpdateInvoicePayload
+) => {
+  try {
+    const response = await axiosInstance.patch(
+      `/admin/invoices/admin/${invoiceId}/details`,
+      payload
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to update invoice details'
     );
   }
 };

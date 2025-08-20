@@ -30,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Eye, Edit, Trash2, Loader2 } from 'lucide-react';
-import { Contract, GwContract, ContractStatus } from '@/lib/adminStore';
+import { Contract, GwContract, ContractStatus } from '@/lib/store/admin/types';
 import { getContractStatus, formatDate } from '@/lib/utils';
 
 const getStatusBadge = (status: ContractStatus) => {

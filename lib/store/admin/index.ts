@@ -14,135 +14,17 @@ import {
   createGwContract,
   updateGwContract,
   deleteGwContract,
-} from './api/index';
-import { contractFormToFormData, gwContractFormToFormData } from './utils';
-
-// --- Tipe Data GCP ---
-export interface User {
-  id: number;
-  email: string;
-  role: string;
-  client: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface Client {
-  id: number;
-  name: string;
-}
-
-export type ContractStatus = 'active' | 'expiring_soon' | 'expired' | 'all';
-
-export interface Contract {
-  id: string;
-  client_id: number;
-  client_name: string;
-  start_date: string;
-  end_date: string;
-  notes: string | null;
-  file_url: string;
-  client_contact_emails: string[];
-  created_at: string;
-}
-
-export interface ContractFormState {
-  clientId: number | null;
-  clientName: string;
-  startDate: string;
-  endDate: string;
-  notes: string;
-  file: File | null;
-  clientEmails: string[];
-}
-
-// --- Tipe Data Google Workspace ---
-export interface GwClient {
-  id: number;
-  name: string;
-}
-
-export interface GwContract {
-  id: string;
-  client_gw_id: number;
-  client_name: string;
-  start_date: string;
-  end_date: string;
-  status: string;
-  notes: string | null;
-  file_url: string;
-  created_at: string;
-  client_contact_emails: string[];
-  domain: string | null;
-  sku: string | null;
-}
-
-export interface GwContractFormState {
-  clientGwId: number | null;
-  clientName: string;
-  startDate: string;
-  endDate: string;
-  notes: string;
-  file: File | null;
-  clientEmails: string[];
-}
-
-// --- Interface State Utama ---
-interface AdminState {
-  users: User[];
-  clients: Client[];
-  contracts: Contract[];
-  gwClients: GwClient[];
-  gwContracts: GwContract[];
-  stats: { totalUsers: number; totalClients: number; activeUsers: number };
-  hasFetched: {
-    users: boolean;
-    clients: boolean;
-    contracts: boolean;
-    gwClients: boolean;
-    gwContracts: boolean;
-    stats: boolean;
-  };
-  loading: {
-    users: boolean;
-    clients: boolean;
-    contracts: boolean;
-    gwContracts: boolean;
-    stats: boolean;
-  };
-  error: string | null;
-
-  fetchUsers: () => Promise<void>;
-  fetchClients: () => Promise<void>;
-  fetchStats: () => Promise<void>;
-
-  fetchContracts: (
-    month?: number | null,
-    year?: number | null
-  ) => Promise<void>;
-  addContract: (formData: ContractFormState) => Promise<void>;
-  editContract: (
-    contractId: string,
-    formData: ContractFormState
-  ) => Promise<void>;
-  removeContract: (contractId: string) => Promise<void>;
-
-  fetchGwClients: () => Promise<void>;
-  fetchGwContracts: (
-    month?: number | null,
-    year?: number | null
-  ) => Promise<void>;
-  addGwContract: (formData: GwContractFormState) => Promise<void>;
-  editGwContract: (
-    contractId: string,
-    formData: GwContractFormState
-  ) => Promise<void>;
-  removeGwContract: (contractId: string) => Promise<void>;
-
-  addUser: (userData: any) => Promise<void>;
-  deleteUser: (userId: number) => Promise<void>;
-  updateUserClient: (userId: number, clientId: number) => Promise<void>;
-}
+  getAdminInvoices,
+  updateAdminInvoiceDetails,
+} from '../../api';
+import { contractFormToFormData, gwContractFormToFormData } from '../../utils';
+import {
+  AdminState,
+  ContractFormState,
+  GwContractFormState,
+  AdminInvoiceParams,
+  AdminUpdateInvoicePayload,
+} from './types';
 
 export const useAdminStore = create<AdminState>((set, get) => ({
   // --- Initial State ---
@@ -151,6 +33,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   contracts: [],
   gwClients: [],
   gwContracts: [],
+  adminInvoices: [],
   stats: { totalUsers: 0, totalClients: 0, activeUsers: 0 },
   hasFetched: {
     users: false,
@@ -159,6 +42,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     gwClients: false,
     gwContracts: false,
     stats: false,
+    adminInvoices: false,
   },
   loading: {
     users: false,
@@ -166,6 +50,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     contracts: false,
     gwContracts: false,
     stats: false,
+    adminInvoices: false,
   },
   error: null,
 
@@ -284,7 +169,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const contractsData = await getContracts(month, year);
       set({
         contracts: contractsData || [],
-        hasFetched: { ...get().hasFetched, contracts: true },
       });
     } catch (err: any) {
       set({ error: err.message || 'Gagal memuat data kontrak' });
@@ -335,7 +219,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const contractsData = await getGwContracts(month, year);
       set({
         gwContracts: contractsData || [],
-        hasFetched: { ...get().hasFetched, gwContracts: true },
       });
     } catch (err: any) {
       set({ error: err.message || 'Gagal memuat kontrak Google Workspace' });
@@ -356,5 +239,30 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
   removeGwContract: async (contractId) => {
     await deleteGwContract(contractId);
+  },
+
+  fetchAdminInvoices: async (params: AdminInvoiceParams) => {
+    set((state) => ({
+      loading: { ...state.loading, adminInvoices: true },
+      error: null,
+    }));
+    try {
+      const invoiceData = await getAdminInvoices(params);
+      set({
+        adminInvoices: invoiceData,
+        hasFetched: { ...get().hasFetched, adminInvoices: true },
+      });
+    } catch (err: any) {
+      set({ error: err.message || 'Gagal memuat data invoice admin' });
+    } finally {
+      set((state) => ({ loading: { ...state.loading, adminInvoices: false } }));
+    }
+  },
+
+  updateInvoiceDetails: async (
+    invoiceId: number,
+    payload: AdminUpdateInvoicePayload
+  ) => {
+    await updateAdminInvoiceDetails(invoiceId, payload);
   },
 }));

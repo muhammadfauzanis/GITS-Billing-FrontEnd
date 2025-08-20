@@ -19,14 +19,14 @@ import {
 } from '@/components/ui/select';
 import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminStore } from '@/lib/store/admin/index';
 import {
-  useAdminStore,
   Contract,
   GwContract,
   ContractFormState,
   GwContractFormState,
   ContractStatus,
-} from '@/lib/adminStore';
+} from '@/lib/store/admin/types';
 import { getContractStatus } from '@/lib/utils';
 import { ContractDialog } from '@/components/admin/contracts/ContractDialog';
 import { ContractStatsCards } from '@/components/admin/contracts/ContractStatsCards';
