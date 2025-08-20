@@ -73,6 +73,8 @@ export interface GwContract {
   file_url: string;
   created_at: string;
   client_contact_emails: string[];
+  domain: string | null;
+  sku: string | null;
 }
 
 export interface GwContractFormState {
