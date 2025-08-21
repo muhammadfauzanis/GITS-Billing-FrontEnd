@@ -1,8 +1,8 @@
 'use client';
 
 import type React from 'react';
-import { AdminSidebar } from '@/components/admin-sidebar';
-import { AdminHeader } from '@/components/admin-header';
+import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { AdminHeader } from '@/components/admin/admin-header';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';

@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Users, UserPlus, Building, Activity, Loader2 } from 'lucide-react';
-import { useAdminStore } from '@/lib/adminStore';
+import { useAdminStore } from '@/lib/store/admin/index';
 import Link from 'next/link';
 
 export default function AdminDashboard() {

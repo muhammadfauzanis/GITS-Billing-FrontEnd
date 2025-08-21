@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
-import { NotificationDropdown } from './notification-dropdown';
+import { NotificationDropdown } from '../notification-dropdown';
 
 export function AdminHeader() {
   const { user, logout } = useAuth();
@@ -75,11 +75,11 @@ export function AdminHeader() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            {/* <DropdownMenuItem>
               <Link href="/admin/settings" className="w-full">
                 Pengaturan
               </Link>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuItem>
               <Link href="/dashboard" className="w-full">
                 Lihat Dashboard Client
