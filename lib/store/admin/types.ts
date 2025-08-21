@@ -89,6 +89,17 @@ export interface PaginatedAdminInvoicesResponse {
   data: GroupedAdminInvoices[];
 }
 
+// Menambahkan tipe paginasi untuk kontrak
+export interface PaginatedContractsResponse {
+  pagination: PaginationInfo;
+  data: Contract[];
+}
+
+export interface PaginatedGwContractsResponse {
+  pagination: PaginationInfo;
+  data: GwContract[];
+}
+
 export interface AdminInvoiceParams {
   status?: string | null;
   clientId?: number | null;
@@ -109,10 +120,12 @@ export interface AdminState {
   users: User[];
   clients: Client[];
   contracts: Contract[];
+  contractsPagination: PaginationInfo | null; // Pagination untuk GCP
   gwClients: GwClient[];
   gwContracts: GwContract[];
+  gwContractsPagination: PaginationInfo | null; // Pagination untuk GW
   adminInvoices: GroupedAdminInvoices[];
-  adminInvoicesPagination: PaginationInfo | null; // State baru untuk info paginasi
+  adminInvoicesPagination: PaginationInfo | null;
   stats: { totalUsers: number; totalClients: number; activeUsers: number };
   hasFetched: {
     users: boolean;
@@ -139,7 +152,9 @@ export interface AdminState {
 
   fetchContracts: (
     month?: number | null,
-    year?: number | null
+    year?: number | null,
+    page?: number,
+    limit?: number
   ) => Promise<void>;
   addContract: (formData: ContractFormState) => Promise<void>;
   editContract: (
@@ -151,7 +166,9 @@ export interface AdminState {
   fetchGwClients: () => Promise<void>;
   fetchGwContracts: (
     month?: number | null,
-    year?: number | null
+    year?: number | null,
+    page?: number,
+    limit?: number
   ) => Promise<void>;
   addGwContract: (formData: GwContractFormState) => Promise<void>;
   editGwContract: (

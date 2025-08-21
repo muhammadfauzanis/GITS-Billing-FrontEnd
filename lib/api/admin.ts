@@ -3,6 +3,8 @@ import {
   AdminInvoiceParams,
   AdminUpdateInvoicePayload,
   PaginatedAdminInvoicesResponse,
+  PaginatedContractsResponse,
+  PaginatedGwContractsResponse,
 } from '../store/admin/types';
 
 export const getUsers = async () => {
@@ -60,13 +62,16 @@ export const getClients = async () => {
 
 export const getContracts = async (
   month?: number | null,
-  year?: number | null
-) => {
+  year?: number | null,
+  page?: number,
+  limit?: number
+): Promise<PaginatedContractsResponse> => {
   try {
     const params = new URLSearchParams();
     if (month) params.append('month', month.toString());
     if (year) params.append('year', year.toString());
-
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
     const response = await axiosInstance.get('/admin/contracts/', { params });
     return response.data;
   } catch (error: any) {
@@ -189,13 +194,16 @@ export const getGwClients = async () => {
 
 export const getGwContracts = async (
   month?: number | null,
-  year?: number | null
-) => {
+  year?: number | null,
+  page?: number,
+  limit?: number
+): Promise<PaginatedGwContractsResponse> => {
   try {
     const params = new URLSearchParams();
     if (month) params.append('month', month.toString());
     if (year) params.append('year', year.toString());
-
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
     const response = await axiosInstance.get('/admin/gw-contracts/', {
       params,
     });

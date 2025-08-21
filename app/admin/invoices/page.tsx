@@ -28,45 +28,9 @@ import {
   PaginationLink,
   PaginationEllipsis,
 } from '@/components/ui/pagination';
-import { cn } from '@/lib/utils';
+import { cn, generatePagination } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 15;
-
-// Helper function untuk membuat rentang nomor halaman dengan elipsis
-const generatePagination = (currentPage: number, totalPages: number) => {
-  // Jika total halaman kurang dari 7, tampilkan semua
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-
-  // Jika halaman saat ini dekat dengan awal
-  if (currentPage <= 3) {
-    return [1, 2, 3, 4, '...', totalPages];
-  }
-
-  // Jika halaman saat ini dekat dengan akhir
-  if (currentPage > totalPages - 3) {
-    return [
-      1,
-      '...',
-      totalPages - 3,
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    ];
-  }
-
-  // Jika halaman saat ini di tengah
-  return [
-    1,
-    '...',
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    '...',
-    totalPages,
-  ];
-};
 
 export default function AdminInvoicesPage() {
   const {

@@ -31,8 +31,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   users: [],
   clients: [],
   contracts: [],
+  contractsPagination: null,
   gwClients: [],
   gwContracts: [],
+  gwContractsPagination: null,
   adminInvoices: [],
   adminInvoicesPagination: null,
   stats: { totalUsers: 0, totalClients: 0, activeUsers: 0 },
@@ -161,15 +163,16 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  fetchContracts: async (month, year) => {
+  fetchContracts: async (month, year, page, limit) => {
     set((state) => ({
       loading: { ...state.loading, contracts: true },
       error: null,
     }));
     try {
-      const contractsData = await getContracts(month, year);
+      const response = await getContracts(month, year, page, limit);
       set({
-        contracts: contractsData || [],
+        contracts: response.data,
+        contractsPagination: response.pagination,
       });
     } catch (err: any) {
       set({ error: err.message || 'Gagal memuat data kontrak' });
@@ -211,15 +214,16 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  fetchGwContracts: async (month, year) => {
+  fetchGwContracts: async (month, year, page, limit) => {
     set((state) => ({
       loading: { ...state.loading, gwContracts: true },
       error: null,
     }));
     try {
-      const contractsData = await getGwContracts(month, year);
+      const response = await getGwContracts(month, year, page, limit);
       set({
-        gwContracts: contractsData || [],
+        gwContracts: response.data,
+        gwContractsPagination: response.pagination,
       });
     } catch (err: any) {
       set({ error: err.message || 'Gagal memuat kontrak Google Workspace' });
