@@ -18,7 +18,7 @@ const sidebarItems = [
   { title: 'Buat Akun', href: '/admin/create-user', icon: UserPlus },
   { title: 'Kelola Kontrak', href: '/admin/contracts', icon: FileText },
   { title: 'Kelola Invoice', href: '/admin/invoices', icon: FileBadge },
-  { title: 'Pengaturan', href: '/admin/settings', icon: Settings },
+  // { title: 'Pengaturan', href: '/admin/settings', icon: Settings },
 ];
 
 export function AdminSidebar() {

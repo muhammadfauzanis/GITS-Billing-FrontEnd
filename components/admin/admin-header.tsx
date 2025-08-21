@@ -75,11 +75,11 @@ export function AdminHeader() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            {/* <DropdownMenuItem>
               <Link href="/admin/settings" className="w-full">
                 Pengaturan
               </Link>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuItem>
               <Link href="/dashboard" className="w-full">
                 Lihat Dashboard Client

@@ -13,14 +13,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AdminInvoice, GroupedAdminInvoices } from '@/lib/store/admin/types';
 import { useAdminStore } from '@/lib/store/admin';
-import { formatCurrency, formatDate, formatMonthOnly } from '@/lib/utils'; // Impor fungsi baru
-import { ExternalLink, Edit, Loader2 } from 'lucide-react';
+import { formatCurrency, formatDate, formatMonthOnly } from '@/lib/utils';
+import { ExternalLink, Edit, Loader2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 interface AdminInvoicesTableProps {
   groupedInvoices: GroupedAdminInvoices[];
   onUpdateStatus: (invoice: AdminInvoice) => void;
+  onView: (invoiceId: number) => void;
+  isActionLoading: number | null;
 }
 
 const statusStyles: { [key: string]: string } = {
@@ -34,6 +36,8 @@ const statusStyles: { [key: string]: string } = {
 export const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({
   groupedInvoices,
   onUpdateStatus,
+  onView,
+  isActionLoading,
 }) => {
   const { loading } = useAdminStore();
 
@@ -85,7 +89,6 @@ export const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({
                     {invoice.invoice_number}
                   </TableCell>
                   <TableCell>{invoice.client_name}</TableCell>
-                  {/* --- PERUBAHAN DI SINI --- */}
                   <TableCell>
                     {formatMonthOnly(invoice.invoice_period)}
                   </TableCell>
@@ -118,14 +121,27 @@ export const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onUpdateStatus(invoice)}
-                    >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Update
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onView(invoice.id)}
+                        disabled={isActionLoading === invoice.id}
+                      >
+                        {isActionLoading === invoice.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onUpdateStatus(invoice)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
