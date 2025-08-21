@@ -55,7 +55,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { useAdminStore, type User } from '@/lib/adminStore';
+import { useAdminStore } from '@/lib/store/admin';
+import { type User } from '@/lib/store/admin/types';
 
 export default function UsersPage() {
   const {

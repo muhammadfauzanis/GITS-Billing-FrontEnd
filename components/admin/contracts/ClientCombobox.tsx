@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Client, GwClient } from '@/lib/adminStore';
+import { Client, GwClient } from '@/lib/store/admin/types';
 
 // Komponen ini sekarang bisa menerima klien GCP atau GW
 interface ClientComboboxProps {

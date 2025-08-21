@@ -2,6 +2,7 @@ import { axiosInstance } from './index';
 import {
   AdminInvoiceParams,
   AdminUpdateInvoicePayload,
+  PaginatedAdminInvoicesResponse,
 } from '../store/admin/types';
 
 export const getUsers = async () => {
@@ -270,9 +271,11 @@ export const deleteGwContract = async (contractId: string) => {
   }
 };
 
-export const getAdminInvoices = async (params: AdminInvoiceParams) => {
+export const getAdminInvoices = async (
+  params: AdminInvoiceParams
+): Promise<PaginatedAdminInvoicesResponse> => {
   try {
-    const response = await axiosInstance.get('/admin/invoices/admin/all', {
+    const response = await axiosInstance.get('/invoices/admin/all', {
       params,
     });
     return response.data;
@@ -289,7 +292,7 @@ export const updateAdminInvoiceDetails = async (
 ) => {
   try {
     const response = await axiosInstance.patch(
-      `/admin/invoices/admin/${invoiceId}/details`,
+      `/invoices/admin/${invoiceId}/details`,
       payload
     );
     return response.data;

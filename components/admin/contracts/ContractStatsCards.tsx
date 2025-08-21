@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 // Impor kedua tipe kontrak
-import { Contract, GwContract, ContractStatus } from '@/lib/adminStore';
+import { Contract, GwContract, ContractStatus } from '@/lib/store/admin/types';
 import { EmailInputBox } from './EmailInputBox';
 import { getInternalEmails } from '@/lib/api/admin';
 

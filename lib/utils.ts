@@ -6,7 +6,7 @@ import type {
   ContractStatus,
   GwClient,
   GwContractFormState,
-} from './adminStore';
+} from './store/admin/types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -96,4 +96,16 @@ export const gwContractFormToFormData = (
     data.append('file', formData.file);
   }
   return data;
+};
+
+export const formatMonthOnly = (dateString: string | null | undefined) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() + userTimezoneOffset).toLocaleDateString(
+    'id-ID',
+    {
+      month: 'long',
+    }
+  );
 };

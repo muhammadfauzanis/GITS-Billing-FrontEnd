@@ -34,6 +34,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   gwClients: [],
   gwContracts: [],
   adminInvoices: [],
+  adminInvoicesPagination: null,
   stats: { totalUsers: 0, totalClients: 0, activeUsers: 0 },
   hasFetched: {
     users: false,
@@ -247,9 +248,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       error: null,
     }));
     try {
-      const invoiceData = await getAdminInvoices(params);
+      const response = await getAdminInvoices(params);
       set({
-        adminInvoices: invoiceData,
+        adminInvoices: response.data,
+        adminInvoicesPagination: response.pagination, // Simpan info paginasi
         hasFetched: { ...get().hasFetched, adminInvoices: true },
       });
     } catch (err: any) {

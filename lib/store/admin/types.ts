@@ -1,4 +1,3 @@
-// --- Tipe Data Pengguna dan Klien ---
 export interface User {
   id: number;
   email: string;
@@ -7,20 +6,16 @@ export interface User {
   status: string;
   createdAt: string;
 }
-
 export interface Client {
   id: number;
   name: string;
 }
-
 export interface GwClient {
   id: number;
   name: string;
 }
 
-// --- Tipe Data Kontrak ---
 export type ContractStatus = 'active' | 'expiring_soon' | 'expired' | 'all';
-
 export interface Contract {
   id: string;
   client_id: number;
@@ -32,7 +27,6 @@ export interface Contract {
   client_contact_emails: string[];
   created_at: string;
 }
-
 export interface GwContract {
   id: string;
   client_gw_id: number;
@@ -48,7 +42,6 @@ export interface GwContract {
   sku: string | null;
 }
 
-// --- Tipe Data Form ---
 export interface ContractFormState {
   clientId: number | null;
   clientName: string;
@@ -58,7 +51,6 @@ export interface ContractFormState {
   file: File | null;
   clientEmails: string[];
 }
-
 export interface GwContractFormState {
   clientGwId: number | null;
   clientName: string;
@@ -69,7 +61,6 @@ export interface GwContractFormState {
   clientEmails: string[];
 }
 
-// --- TIPE DATA INVOICE ADMIN YANG HILANG ---
 export interface AdminInvoice {
   id: number;
   invoice_number: string;
@@ -81,9 +72,30 @@ export interface AdminInvoice {
   proof_of_payment_url: string | null;
 }
 
+export interface GroupedAdminInvoices {
+  month: string;
+  invoices: AdminInvoice[];
+}
+
+export interface PaginationInfo {
+  total_items: number;
+  total_pages: number;
+  current_page: number;
+  limit: number;
+}
+
+export interface PaginatedAdminInvoicesResponse {
+  pagination: PaginationInfo;
+  data: GroupedAdminInvoices[];
+}
+
 export interface AdminInvoiceParams {
   status?: string | null;
   clientId?: number | null;
+  month?: number | null;
+  year?: number | null;
+  page?: number;
+  limit?: number;
 }
 
 export interface AdminUpdateInvoicePayload {
@@ -99,7 +111,8 @@ export interface AdminState {
   contracts: Contract[];
   gwClients: GwClient[];
   gwContracts: GwContract[];
-  adminInvoices: AdminInvoice[]; // Tambahkan ini
+  adminInvoices: GroupedAdminInvoices[];
+  adminInvoicesPagination: PaginationInfo | null; // State baru untuk info paginasi
   stats: { totalUsers: number; totalClients: number; activeUsers: number };
   hasFetched: {
     users: boolean;
@@ -108,7 +121,7 @@ export interface AdminState {
     gwClients: boolean;
     gwContracts: boolean;
     stats: boolean;
-    adminInvoices: boolean; // Tambahkan ini
+    adminInvoices: boolean;
   };
   loading: {
     users: boolean;
@@ -116,7 +129,7 @@ export interface AdminState {
     contracts: boolean;
     gwContracts: boolean;
     stats: boolean;
-    adminInvoices: boolean; // Tambahkan ini
+    adminInvoices: boolean;
   };
   error: string | null;
 
@@ -151,9 +164,9 @@ export interface AdminState {
   deleteUser: (userId: number) => Promise<void>;
   updateUserClient: (userId: number, clientId: number) => Promise<void>;
 
-  fetchAdminInvoices: (params: AdminInvoiceParams) => Promise<void>; // Tambahkan ini
+  fetchAdminInvoices: (params: AdminInvoiceParams) => Promise<void>;
   updateInvoiceDetails: (
     invoiceId: number,
     payload: AdminUpdateInvoicePayload
-  ) => Promise<void>; // Tambahkan ini
+  ) => Promise<void>;
 }

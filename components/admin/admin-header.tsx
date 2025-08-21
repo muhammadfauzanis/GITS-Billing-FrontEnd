@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
-import { NotificationDropdown } from './notification-dropdown';
+import { NotificationDropdown } from '../notification-dropdown';
 
 export function AdminHeader() {
   const { user, logout } = useAuth();
