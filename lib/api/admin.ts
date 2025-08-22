@@ -5,7 +5,16 @@ import {
   PaginatedAdminInvoicesResponse,
   PaginatedContractsResponse,
   PaginatedGwContractsResponse,
+  AdminDashboardStats,
+  UpcomingRenewal,
+  RecentInvoice,
 } from '../store/admin/types';
+
+export interface AdminDashboardData {
+  stats: AdminDashboardStats;
+  upcomingRenewals: UpcomingRenewal[];
+  recentInvoices: RecentInvoice[];
+}
 
 export const getUsers = async () => {
   try {
@@ -307,6 +316,17 @@ export const updateAdminInvoiceDetails = async (
   } catch (error: any) {
     throw new Error(
       error.response?.data?.detail || 'Failed to update invoice details'
+    );
+  }
+};
+
+export const getAdminDashboardData = async (): Promise<AdminDashboardData> => {
+  try {
+    const response = await axiosInstance.get('/admin/dashboard-summary');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch admin dashboard data'
     );
   }
 };
