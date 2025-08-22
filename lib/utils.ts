@@ -1,6 +1,12 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { Client, ContractFormState, ContractStatus } from './adminStore';
+import type {
+  Client,
+  ContractFormState,
+  ContractStatus,
+  GwClient,
+  GwContractFormState,
+} from './store/admin/types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -16,6 +22,7 @@ export function formatCurrency(value: number | null | undefined): string {
   })}`;
 }
 
+// --- PERUBAHAN DI SINI ---
 export const contractFormToFormData = (
   formData: ContractFormState,
   clients: Client[]
@@ -39,10 +46,6 @@ export const contractFormToFormData = (
   formData.clientEmails
     .filter((email) => email)
     .forEach((email) => data.append('client_contact_emails', email));
-  formData.internalEmails
-    .filter((email) => email)
-    .forEach((email) => data.append('internal_notification_emails', email));
-
   if (formData.file) {
     data.append('file', formData.file);
   }
@@ -68,4 +71,69 @@ export const formatDate = (dateString: string) => {
     month: 'long',
     day: 'numeric',
   });
+};
+
+export const gwContractFormToFormData = (
+  formData: GwContractFormState,
+  clients: GwClient[]
+): FormData => {
+  const data = new FormData();
+
+  // Client ID untuk GW
+  if (formData.clientGwId) {
+    data.append('client_gw_id', formData.clientGwId.toString());
+  }
+
+  data.append('start_date', formData.startDate);
+  data.append('end_date', formData.endDate);
+  data.append('notes', formData.notes || '');
+
+  formData.clientEmails
+    .filter((email) => email)
+    .forEach((email) => data.append('client_contact_emails', email));
+
+  if (formData.file) {
+    data.append('file', formData.file);
+  }
+  return data;
+};
+
+export const formatMonthOnly = (dateString: string | null | undefined) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() + userTimezoneOffset).toLocaleDateString(
+    'id-ID',
+    {
+      month: 'long',
+    }
+  );
+};
+
+export const generatePagination = (currentPage: number, totalPages: number) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 3) {
+    return [1, 2, 3, 4, '...', totalPages];
+  }
+  if (currentPage > totalPages - 3) {
+    return [
+      1,
+      '...',
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+  return [
+    1,
+    '...',
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    '...',
+    totalPages,
+  ];
 };

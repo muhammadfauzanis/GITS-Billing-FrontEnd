@@ -1,4 +1,11 @@
 import { axiosInstance } from './index';
+import {
+  AdminInvoiceParams,
+  AdminUpdateInvoicePayload,
+  PaginatedAdminInvoicesResponse,
+  PaginatedContractsResponse,
+  PaginatedGwContractsResponse,
+} from '../store/admin/types';
 
 export const getUsers = async () => {
   try {
@@ -53,13 +60,34 @@ export const getClients = async () => {
   }
 };
 
-export const getContracts = async () => {
+export const getContracts = async (
+  month?: number | null,
+  year?: number | null,
+  page?: number,
+  limit?: number
+): Promise<PaginatedContractsResponse> => {
   try {
-    const response = await axiosInstance.get('/admin/contracts/');
+    const params = new URLSearchParams();
+    if (month) params.append('month', month.toString());
+    if (year) params.append('year', year.toString());
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    const response = await axiosInstance.get('/admin/contracts/', { params });
     return response.data;
   } catch (error: any) {
     throw new Error(
       error.response?.data?.detail || 'Failed to fetch contracts'
+    );
+  }
+};
+
+export const getContractDetails = async (contractId: string) => {
+  try {
+    const response = await axiosInstance.get(`/admin/contracts/${contractId}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch contract details'
     );
   }
 };
@@ -106,6 +134,179 @@ export const deleteContract = async (contractId: string) => {
   } catch (error: any) {
     throw new Error(
       error.response?.data?.detail || 'Failed to delete contract'
+    );
+  }
+};
+
+export const getInternalEmails = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/settings/internal-emails');
+    return response.data.emails || [];
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch internal emails'
+    );
+  }
+};
+
+export const addInternalEmail = async (email: string) => {
+  try {
+    const response = await axiosInstance.post(
+      '/admin/settings/internal-emails',
+      { email }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to add internal email'
+    );
+  }
+};
+
+export const deleteInternalEmail = async (email: string) => {
+  try {
+    const response = await axiosInstance.delete(
+      '/admin/settings/internal-emails',
+      {
+        data: { email },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to delete internal email'
+    );
+  }
+};
+
+// GOOGLE WORKSPACE
+
+export const getGwClients = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/gw-clients');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch Google Workspace clients'
+    );
+  }
+};
+
+export const getGwContracts = async (
+  month?: number | null,
+  year?: number | null,
+  page?: number,
+  limit?: number
+): Promise<PaginatedGwContractsResponse> => {
+  try {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month.toString());
+    if (year) params.append('year', year.toString());
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    const response = await axiosInstance.get('/admin/gw-contracts/', {
+      params,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail ||
+        'Failed to fetch Google Workspace contracts'
+    );
+  }
+};
+
+export const getGwContractDetails = async (contractId: string) => {
+  try {
+    const response = await axiosInstance.get(
+      `/admin/gw-contracts/${contractId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch GW contract details'
+    );
+  }
+};
+
+export const createGwContract = async (formData: FormData) => {
+  try {
+    const response = await axiosInstance.post(
+      '/admin/gw-contracts/',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to create GW contract'
+    );
+  }
+};
+
+export const updateGwContract = async (
+  contractId: string,
+  formData: FormData
+) => {
+  try {
+    const response = await axiosInstance.patch(
+      `/admin/gw-contracts/${contractId}`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to update GW contract'
+    );
+  }
+};
+
+export const deleteGwContract = async (contractId: string) => {
+  try {
+    const response = await axiosInstance.delete(
+      `/admin/gw-contracts/${contractId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to delete GW contract'
+    );
+  }
+};
+
+export const getAdminInvoices = async (
+  params: AdminInvoiceParams
+): Promise<PaginatedAdminInvoicesResponse> => {
+  try {
+    const response = await axiosInstance.get('/invoices/admin/all', {
+      params,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to fetch admin invoices'
+    );
+  }
+};
+
+export const updateAdminInvoiceDetails = async (
+  invoiceId: number,
+  payload: AdminUpdateInvoicePayload
+) => {
+  try {
+    const response = await axiosInstance.patch(
+      `/invoices/admin/${invoiceId}/details`,
+      payload
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to update invoice details'
     );
   }
 };
