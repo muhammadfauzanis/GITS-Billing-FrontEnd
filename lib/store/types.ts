@@ -14,6 +14,12 @@ export interface BudgetSettings {
   alertEmails: string[];
 }
 
+export interface UserProfile {
+  email: string;
+  client_name: string;
+  whatsapp_number: string | null;
+}
+
 export interface UsageFilters {
   month: number;
   year: number;
@@ -34,6 +40,7 @@ export interface ClientSlice {
   monthlyFilters: UsageFilters;
   error: string | null;
   settingsData: BudgetSettings | null;
+  userProfile: UserProfile | null;
   loading: {
     dashboard: boolean;
     usage: boolean;
@@ -47,6 +54,7 @@ export interface ClientSlice {
     dailySkuBreakdown: boolean;
     invoices: boolean;
     notifications: boolean;
+    userProfile: boolean;
   };
   initializeDashboard: (user: AppUser) => void;
   setClients: (clients: Client[]) => void;
@@ -55,6 +63,8 @@ export interface ClientSlice {
   setMonthlyFilters: (filters: UsageFilters) => void;
   fetchSettingsData: () => Promise<void>;
   updateBudget: (data: BudgetSettings) => Promise<void>;
+  fetchUserProfile: () => Promise<void>;
+  updateUserProfile: (whatsappNumber: string | null) => Promise<void>;
 }
 
 export interface DailySlice {

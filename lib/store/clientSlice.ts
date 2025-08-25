@@ -1,7 +1,18 @@
 import { StateCreator } from 'zustand';
-import { DashboardState, ClientSlice, Client, BudgetSettings } from './types';
+import {
+  DashboardState,
+  ClientSlice,
+  Client,
+  BudgetSettings,
+  UserProfile,
+} from './types';
 import type { AppUser } from '../auth';
-import { getBudgetSettings, updateBudgetSettings } from '../api';
+import {
+  getBudgetSettings,
+  updateBudgetSettings,
+  getUserProfile,
+  updateUserProfile,
+} from '../api';
 
 const now = new Date();
 
@@ -18,6 +29,7 @@ export const createClientSlice: StateCreator<
   monthlyFilters: { month: now.getMonth() + 1, year: now.getFullYear() },
   error: null,
   settingsData: null,
+  userProfile: null,
   loading: {
     dashboard: true,
     usage: true,
@@ -31,6 +43,7 @@ export const createClientSlice: StateCreator<
     dailySkuBreakdown: true,
     invoices: true,
     notifications: true,
+    userProfile: true,
   },
 
   initializeDashboard: (user: AppUser) => {
@@ -53,6 +66,7 @@ export const createClientSlice: StateCreator<
       dashboardData: null,
       usageData: null,
       settingsData: null,
+      userProfile: null,
       projectDetailData: {
         monthly: null,
         dailyService: null,
@@ -113,6 +127,32 @@ export const createClientSlice: StateCreator<
       await get().fetchSettingsData();
     } catch (err: any) {
       const errorMessage = err.message || 'Gagal memperbarui budget.';
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
+    }
+  },
+
+  fetchUserProfile: async () => {
+    set((state) => ({
+      loading: { ...state.loading, userProfile: true },
+      error: null,
+    }));
+    try {
+      const profile = await getUserProfile();
+      set({ userProfile: profile });
+    } catch (err: any) {
+      set({ error: err.message || 'Gagal memuat profil pengguna.' });
+    } finally {
+      set((state) => ({ loading: { ...state.loading, userProfile: false } }));
+    }
+  },
+
+  updateUserProfile: async (whatsappNumber: string | null) => {
+    try {
+      await updateUserProfile(whatsappNumber);
+      await get().fetchUserProfile();
+    } catch (err: any) {
+      const errorMessage = err.message || 'Gagal memperbarui nomor WhatsApp.';
       set({ error: errorMessage });
       throw new Error(errorMessage);
     }
