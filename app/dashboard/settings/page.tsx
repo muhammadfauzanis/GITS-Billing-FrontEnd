@@ -9,8 +9,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-
-// Impor komponen-komponen baru
 import { AccountInfoCard } from '@/components/settings/AccountInfoCard';
 import { ContactInfoCard } from '@/components/settings/ContactInfoCard';
 import { BillingSettingsCard } from '@/components/settings/BillingSettingsCard';
@@ -39,18 +37,12 @@ export default function SettingsPage() {
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-          {/* Kolom Kiri */}
-          <div className="flex flex-col gap-6">
-            <AccountInfoCard />
-            <BillingSettingsCard />
-          </div>
-
-          {/* Kolom Kanan */}
-          <div className="flex flex-col gap-6">
-            <ContactInfoCard />
-            <PasswordCard />
-          </div>
+        {/* Struktur grid 2x2 sederhana, tanpa div pembungkus kolom */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AccountInfoCard />
+          <ContactInfoCard />
+          <BillingSettingsCard />
+          <PasswordCard />
         </div>
 
         <DialogContent className="sm:max-w-[480px] p-0">

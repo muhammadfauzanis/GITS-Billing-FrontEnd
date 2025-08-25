@@ -58,7 +58,7 @@ export function PasswordCard() {
           Tombol akan aktif setelah semua kolom diisi.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow">
+      <CardContent className="flex flex-col flex-grow">
         <form onSubmit={handleSave} className="flex flex-col h-full">
           <div className="space-y-4 flex-grow">
             <div className="space-y-2">
