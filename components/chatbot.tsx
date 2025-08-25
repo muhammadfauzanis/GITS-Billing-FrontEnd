@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/lib/auth";
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
