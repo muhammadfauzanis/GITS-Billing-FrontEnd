@@ -83,14 +83,8 @@ export default function ChatbotPage() {
 
     try {
         const payload = {
-        appName: "billing_agent",
-        sessionId,
-        userId,
-        newMessage: {
-          role: "user",
-          parts: [{ text: input }]
-        },
-        streaming: false
+        sessionId: sessionId,
+        message: input
       };
 
       const res = await axios.post(`${baseUrl}/run`, payload, {
