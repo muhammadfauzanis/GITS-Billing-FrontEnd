@@ -14,6 +14,7 @@ import {
   createGwContract,
   updateGwContract,
   deleteGwContract,
+  getAdminDashboardData,
   getAdminInvoices,
   updateAdminInvoiceDetails,
 } from '../../api';
@@ -37,14 +38,15 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   gwContractsPagination: null,
   adminInvoices: [],
   adminInvoicesPagination: null,
-  stats: { totalUsers: 0, totalClients: 0, activeUsers: 0 },
+  dashboardStats: null,
+  upcomingRenewals: [],
+  recentInvoices: [],
   hasFetched: {
     users: false,
     clients: false,
     contracts: false,
     gwClients: false,
     gwContracts: false,
-    stats: false,
     adminInvoices: false,
   },
   loading: {
@@ -52,12 +54,31 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     clients: false,
     contracts: false,
     gwContracts: false,
-    stats: false,
     adminInvoices: false,
+    dashboard: true,
   },
   error: null,
 
   // --- Actions ---
+  fetchAdminDashboardData: async () => {
+    set((state) => ({
+      loading: { ...state.loading, dashboard: true },
+      error: null,
+    }));
+    try {
+      const dashboardData = await getAdminDashboardData();
+      set({
+        dashboardStats: dashboardData.stats,
+        upcomingRenewals: dashboardData.upcomingRenewals,
+        recentInvoices: dashboardData.recentInvoices,
+      });
+    } catch (err: any) {
+      set({ error: err.message || 'Gagal memuat data dashboard' });
+    } finally {
+      set((state) => ({ loading: { ...state.loading, dashboard: false } }));
+    }
+  },
+
   fetchUsers: async () => {
     if (get().hasFetched.users) return;
     set((state) => ({
@@ -96,35 +117,9 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  fetchStats: async () => {
-    if (get().hasFetched.stats) return;
-    set((state) => ({
-      loading: { ...state.loading, stats: true },
-      error: null,
-    }));
-    try {
-      await get().fetchUsers();
-      await get().fetchClients();
-      const users = get().users;
-      const clients = get().clients;
-      set({
-        stats: {
-          totalUsers: users.length,
-          totalClients: clients.length,
-          activeUsers: users.filter((u) => u.status === 'Aktif').length,
-        },
-        hasFetched: { ...get().hasFetched, stats: true },
-      });
-    } catch (err: any) {
-      set({ error: err.message || 'Gagal memuat statistik' });
-    } finally {
-      set((state) => ({ loading: { ...state.loading, stats: false } }));
-    }
-  },
-
   addUser: async (userData) => {
     await apiRegisterUser(userData);
-    set({ hasFetched: { ...get().hasFetched, users: false, stats: false } });
+    set({ hasFetched: { ...get().hasFetched, users: false } });
   },
 
   deleteUser: async (userId) => {
@@ -132,7 +127,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set((state) => ({ users: state.users.filter((u) => u.id !== userId) }));
     try {
       await apiDeleteUser(userId);
-      set({ hasFetched: { ...get().hasFetched, stats: false } });
     } catch (err: any) {
       set({
         users: originalUsers,
@@ -255,7 +249,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const response = await getAdminInvoices(params);
       set({
         adminInvoices: response.data,
-        adminInvoicesPagination: response.pagination, // Simpan info paginasi
+        adminInvoicesPagination: response.pagination,
         hasFetched: { ...get().hasFetched, adminInvoices: true },
       });
     } catch (err: any) {

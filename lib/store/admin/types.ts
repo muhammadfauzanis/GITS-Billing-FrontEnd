@@ -14,7 +14,6 @@ export interface GwClient {
   id: number;
   name: string;
 }
-
 export type ContractStatus = 'active' | 'expiring_soon' | 'expired' | 'all';
 export interface Contract {
   id: string;
@@ -41,7 +40,6 @@ export interface GwContract {
   domain: string | null;
   sku: string | null;
 }
-
 export interface ContractFormState {
   clientId: number | null;
   clientName: string;
@@ -60,7 +58,6 @@ export interface GwContractFormState {
   file: File | null;
   clientEmails: string[];
 }
-
 export interface AdminInvoice {
   id: number;
   invoice_number: string;
@@ -71,30 +68,24 @@ export interface AdminInvoice {
   status: string;
   proof_of_payment_url: string | null;
 }
-
 export interface GroupedAdminInvoices {
   month: string;
   invoices: AdminInvoice[];
 }
-
 export interface PaginationInfo {
   total_items: number;
   total_pages: number;
   current_page: number;
   limit: number;
 }
-
 export interface PaginatedAdminInvoicesResponse {
   pagination: PaginationInfo;
   data: GroupedAdminInvoices[];
 }
-
-// Menambahkan tipe paginasi untuk kontrak
 export interface PaginatedContractsResponse {
   pagination: PaginationInfo;
   data: Contract[];
 }
-
 export interface PaginatedGwContractsResponse {
   pagination: PaginationInfo;
   data: GwContract[];
@@ -108,32 +99,54 @@ export interface AdminInvoiceParams {
   page?: number;
   limit?: number;
 }
-
 export interface AdminUpdateInvoicePayload {
   status: string;
   payment_date?: string | null;
   payment_notes?: string | null;
 }
 
-// --- Tipe Data State Utama untuk Admin Store ---
+export interface AdminDashboardStats {
+  totalClients: number;
+  totalActiveContracts: number;
+  expiringSoonContracts: number;
+  pendingInvoicesCount: number;
+  overdueInvoicesCount: number;
+}
+export interface UpcomingRenewal {
+  id: string;
+  client_name: string;
+  end_date: string;
+  type: 'GCP' | 'GW';
+}
+export interface RecentInvoice {
+  id: number;
+  invoice_number: string;
+  client_name: string;
+  total_amount: number;
+  status: string;
+  due_date: string;
+}
+
 export interface AdminState {
   users: User[];
   clients: Client[];
   contracts: Contract[];
-  contractsPagination: PaginationInfo | null; // Pagination untuk GCP
+  contractsPagination: PaginationInfo | null;
   gwClients: GwClient[];
   gwContracts: GwContract[];
-  gwContractsPagination: PaginationInfo | null; // Pagination untuk GW
+  gwContractsPagination: PaginationInfo | null;
   adminInvoices: GroupedAdminInvoices[];
   adminInvoicesPagination: PaginationInfo | null;
-  stats: { totalUsers: number; totalClients: number; activeUsers: number };
+  dashboardStats: AdminDashboardStats | null;
+  upcomingRenewals: UpcomingRenewal[];
+  recentInvoices: RecentInvoice[];
+
   hasFetched: {
     users: boolean;
     clients: boolean;
     contracts: boolean;
     gwClients: boolean;
     gwContracts: boolean;
-    stats: boolean;
     adminInvoices: boolean;
   };
   loading: {
@@ -141,14 +154,14 @@ export interface AdminState {
     clients: boolean;
     contracts: boolean;
     gwContracts: boolean;
-    stats: boolean;
     adminInvoices: boolean;
+    dashboard: boolean;
   };
   error: string | null;
 
   fetchUsers: () => Promise<void>;
   fetchClients: () => Promise<void>;
-  fetchStats: () => Promise<void>;
+  fetchAdminDashboardData: () => Promise<void>; // Ganti nama fetchStats
 
   fetchContracts: (
     month?: number | null,
