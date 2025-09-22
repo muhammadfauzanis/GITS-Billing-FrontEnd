@@ -213,7 +213,7 @@ export const getGwContracts = async (
     if (year) params.append('year', year.toString());
     if (page) params.append('page', page.toString());
     if (limit) params.append('limit', limit.toString());
-    const response = await axiosInstance.get('/admin/gw-contracts/', {
+    const response = await axiosInstance.get('/admin/gw-contracts', {
       params,
     });
     return response.data;

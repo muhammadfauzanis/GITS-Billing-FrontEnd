@@ -79,11 +79,11 @@ export const gwContractFormToFormData = (
 ): FormData => {
   const data = new FormData();
 
-  // Client ID untuk GW
   if (formData.clientGwId) {
     data.append('client_gw_id', formData.clientGwId.toString());
   }
 
+  data.append('client_name', formData.clientName);
   data.append('start_date', formData.startDate);
   data.append('end_date', formData.endDate);
   data.append('notes', formData.notes || '');
