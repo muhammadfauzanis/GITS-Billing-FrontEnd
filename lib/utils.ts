@@ -35,10 +35,7 @@ export const contractFormToFormData = (
   const clientIdToSend = client ? client.id.toString() : '0';
 
   data.append('client_id', clientIdToSend);
-  if (!client) {
-    data.append('client_name', formData.clientName);
-  }
-
+  data.append('client_name', formData.clientName);
   data.append('start_date', formData.startDate);
   data.append('end_date', formData.endDate);
   data.append('notes', formData.notes || '');
