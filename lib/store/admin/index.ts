@@ -17,6 +17,9 @@ import {
   getAdminDashboardData,
   getAdminInvoices,
   updateAdminInvoiceDetails,
+  approveInvoice as apiApproveInvoice,
+  rejectInvoice as apiRejectInvoice,
+  approveAllInvoices as apiApproveAllInvoices,
 } from '../../api';
 import { contractFormToFormData, gwContractFormToFormData } from '../../utils';
 import {
@@ -28,7 +31,6 @@ import {
 } from './types';
 
 export const useAdminStore = create<AdminState>((set, get) => ({
-  // --- Initial State ---
   users: [],
   clients: [],
   contracts: [],
@@ -58,8 +60,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     dashboard: true,
   },
   error: null,
+  lastInvoiceParams: {},
 
-  // --- Actions ---
   fetchAdminDashboardData: async () => {
     set((state) => ({
       loading: { ...state.loading, dashboard: true },
@@ -241,6 +243,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   fetchAdminInvoices: async (params: AdminInvoiceParams) => {
+    set({ lastInvoiceParams: params });
     set((state) => ({
       loading: { ...state.loading, adminInvoices: true },
       error: null,
@@ -250,7 +253,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       set({
         adminInvoices: response.data,
         adminInvoicesPagination: response.pagination,
-        hasFetched: { ...get().hasFetched, adminInvoices: true },
       });
     } catch (err: any) {
       set({ error: err.message || 'Gagal memuat data invoice admin' });
@@ -264,5 +266,21 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     payload: AdminUpdateInvoicePayload
   ) => {
     await updateAdminInvoiceDetails(invoiceId, payload);
+  },
+
+  approveInvoice: async (invoiceId: number) => {
+    await apiApproveInvoice(invoiceId);
+    // Panggil fetchAdminInvoices lagi dengan filter terakhir untuk refresh data
+    await get().fetchAdminInvoices(get().lastInvoiceParams);
+  },
+
+  rejectInvoice: async (invoiceId: number, reason: string) => {
+    await apiRejectInvoice(invoiceId, reason);
+    await get().fetchAdminInvoices(get().lastInvoiceParams);
+  },
+
+  approveAllInvoices: async (invoiceIds: number[]) => {
+    await apiApproveAllInvoices(invoiceIds);
+    await get().fetchAdminInvoices(get().lastInvoiceParams);
   },
 }));

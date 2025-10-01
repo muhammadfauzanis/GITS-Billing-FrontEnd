@@ -22,8 +22,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useAdminStore } from '@/lib/store/admin';
 import { AdminInvoice } from '@/lib/store/admin/types';
 import { AdminInvoicesTable } from '@/components/admin/invoices/AdminInvoicesTable';
@@ -39,7 +41,7 @@ import {
 } from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { X } from 'lucide-react';
+import { X, Loader2, ShieldCheck } from 'lucide-react';
 import { getInvoiceViewUrl } from '@/lib/api/invoices';
 import { generatePagination } from '@/lib/utils';
 
@@ -52,26 +54,29 @@ export default function AdminInvoicesPage() {
     adminInvoicesPagination,
     fetchClients,
     fetchAdminInvoices,
+    approveInvoice,
+    rejectInvoice,
+    approveAllInvoices,
+    loading,
   } = useAdminStore();
   const { toast } = useToast();
 
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<AdminInvoice | null>(
     null
   );
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState<number | null>(null);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
 
-  const [filters, setFilters] = useState<{
-    status: string | null;
-    clientId: number | null;
-    month: string;
-    year: string;
-  }>({
-    status: null,
-    clientId: null,
+  const [filters, setFilters] = useState({
+    status: 'all',
+    approval_status: 'draft',
+    clientId: 'all',
     month: 'all',
     year: new Date().getFullYear().toString(),
   });
@@ -80,39 +85,85 @@ export default function AdminInvoicesPage() {
     fetchClients();
   }, [fetchClients]);
 
-  useEffect(() => {
+  const refetchCurrentPage = () => {
     const params = {
-      status: filters.status,
-      clientId: filters.clientId,
+      status: filters.status === 'all' ? null : filters.status,
+      approval_status:
+        filters.approval_status === 'all' ? null : filters.approval_status,
+      clientId: filters.clientId === 'all' ? null : Number(filters.clientId),
       month: filters.month === 'all' ? null : Number(filters.month),
       year: filters.month === 'all' ? null : Number(filters.year),
       page: currentPage,
       limit: ITEMS_PER_PAGE,
     };
     fetchAdminInvoices(params);
-  }, [fetchAdminInvoices, filters, currentPage]);
+  };
+
+  useEffect(() => {
+    refetchCurrentPage();
+    setSelectedRows({});
+  }, [filters, currentPage]);
+
+  const handleApprove = async (invoiceId: number) => {
+    try {
+      await approveInvoice(invoiceId);
+      toast({
+        title: 'Success',
+        description: `Invoice approved. Sending process started.`,
+      });
+      refetchCurrentPage();
+    } catch (e: any) {
+      toast({
+        title: 'Error Approving',
+        description: e.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRejectClick = (invoice: AdminInvoice) => {
+    setSelectedInvoice(invoice);
+    setIsRejectDialogOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedInvoice || !rejectionReason.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Reason for rejection cannot be empty.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      await rejectInvoice(selectedInvoice.id, rejectionReason);
+      toast({ title: 'Success', description: `Invoice has been rejected.` });
+      setIsRejectDialogOpen(false);
+      setRejectionReason('');
+      refetchCurrentPage();
+    } catch (e: any) {
+      toast({
+        title: 'Error Rejecting',
+        description: e.message,
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleUpdateStatusClick = (invoice: AdminInvoice) => {
     setSelectedInvoice(invoice);
     setIsUpdateDialogOpen(true);
   };
 
-  const handleUpdateDialogClose = () => {
-    setIsUpdateDialogOpen(false);
-    setSelectedInvoice(null);
-  };
-
   const handleViewClick = async (invoiceId: number) => {
     setIsActionLoading(invoiceId);
     try {
       const data = await getInvoiceViewUrl(invoiceId);
-      if (data.url) {
-        setViewingUrl(data.url.replace(/^http:/, 'https'));
-      }
+      if (data.url) setViewingUrl(data.url);
     } catch (err: any) {
       toast({
-        title: 'Gagal Membuka Pratinjau',
-        description: err.message || 'Tidak dapat mengambil URL tagihan.',
+        title: 'Error',
+        description: err.message,
         variant: 'destructive',
       });
     } finally {
@@ -120,22 +171,60 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  const handleFilterChange = (
-    type: 'status' | 'clientId' | 'month' | 'year',
-    value: string
-  ) => {
+  const handleSelectRow = (id: number) => {
+    setSelectedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleSelectAll = () => {
+    const allDraftIdsInView = adminInvoices
+      .flatMap((group) => group.invoices)
+      .filter((inv) => inv.approval_status === 'draft')
+      .map((inv) => inv.id);
+
+    const isAllSelected =
+      allDraftIdsInView.length > 0 &&
+      allDraftIdsInView.every((id) => selectedRows[id]);
+
+    const newSelection: Record<string, boolean> = {};
+    if (!isAllSelected) {
+      allDraftIdsInView.forEach((id) => {
+        newSelection[id] = true;
+      });
+    }
+    setSelectedRows(newSelection);
+  };
+
+  const handleApproveSelected = async () => {
+    const idsToApprove = Object.entries(selectedRows)
+      .filter(([, isSelected]) => isSelected)
+      .map(([id]) => Number(id));
+
+    if (idsToApprove.length === 0) {
+      toast({ title: 'No invoices selected', variant: 'destructive' });
+      return;
+    }
+    setIsBulkLoading(true);
+    try {
+      await approveAllInvoices(idsToApprove);
+      toast({
+        title: 'Success',
+        description: `${idsToApprove.length} invoices are being processed.`,
+      });
+      refetchCurrentPage();
+    } catch (e: any) {
+      toast({
+        title: 'Bulk Approve Error',
+        description: e.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleFilterChange = (type: keyof typeof filters, value: string) => {
     setCurrentPage(1);
-    setFilters((f) => {
-      const newFilters = { ...f };
-      if (type === 'clientId') {
-        newFilters.clientId = value === 'all' ? null : Number(value);
-      } else if (type === 'status') {
-        newFilters.status = value === 'all' ? null : value;
-      } else {
-        (newFilters as any)[type] = value;
-      }
-      return newFilters;
-    });
+    setFilters((f) => ({ ...f, [type]: value }));
   };
 
   const months = useMemo(
@@ -146,67 +235,21 @@ export default function AdminInvoicesPage() {
       })),
     []
   );
-  const years = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 4 }, (_, i) => ({
-      value: String(currentYear - 1 + i),
-      label: String(currentYear - 1 + i),
-    }));
-  }, []);
-
-  const refetchCurrentPage = () => {
-    const params = {
-      status: filters.status,
-      clientId: filters.clientId,
-      month: filters.month === 'all' ? null : Number(filters.month),
-      year: filters.month === 'all' ? null : Number(filters.year),
-      page: currentPage,
-      limit: ITEMS_PER_PAGE,
-    };
-    fetchAdminInvoices(params);
-  };
-
+  const years = useMemo(
+    () =>
+      Array.from({ length: 4 }, (_, i) => ({
+        value: String(new Date().getFullYear() - 1 + i),
+        label: String(new Date().getFullYear() - 1 + i),
+      })),
+    []
+  );
   const totalPages = adminInvoicesPagination?.total_pages || 1;
   const pageNumbers = generatePagination(currentPage, totalPages);
+  const selectedCount = Object.values(selectedRows).filter(Boolean).length;
 
   return (
     <>
-      <Dialog
-        open={!!viewingUrl}
-        onOpenChange={(open) => !open && setViewingUrl(null)}
-      >
-        <DialogContent className="max-w-4xl w-full h-[90vh] p-2 md:p-4 bg-transparent border-0 shadow-none focus:outline-none">
-          {/* --- PERBAIKAN DI SINI --- */}
-          <DialogHeader className="sr-only">
-            <DialogTitle>Invoice Preview</DialogTitle>
-            <DialogDescription>
-              Showing a preview of the selected invoice PDF.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              className="absolute top-[-14px] right-[-14px] z-20 h-9 w-9 rounded-full p-0 bg-background border shadow-md hover:bg-muted"
-            >
-              <X className="h-5 w-5" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-          <Card className="w-full h-full relative flex flex-col">
-            <CardContent className="p-0 flex-grow h-full overflow-hidden rounded-lg">
-              {viewingUrl && (
-                <iframe
-                  src={viewingUrl}
-                  className="w-full h-full border-0"
-                  title="Pratinjau Invoice"
-                />
-              )}
-            </CardContent>
-          </Card>
-        </DialogContent>
-      </Dialog>
-
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+      <div className="flex-1 space-y-6">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">
             Invoice Management
@@ -219,90 +262,94 @@ export default function AdminInvoicesPage() {
               <div>
                 <CardTitle>All Client Invoices</CardTitle>
                 <CardDescription>
-                  View and manage all client invoices.
+                  View, approve, and manage all client invoices.
                 </CardDescription>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                <Select
-                  value={filters.clientId?.toString() || 'all'}
-                  onValueChange={(value) =>
-                    handleFilterChange('clientId', value)
-                  }
+              {selectedCount > 0 && (
+                <Button
+                  onClick={handleApproveSelected}
+                  disabled={isBulkLoading}
                 >
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter by Client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Clients</SelectItem>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id.toString()}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filters.status || 'all'}
-                  onValueChange={(value) => handleFilterChange('status', value)}
-                >
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filters.month}
-                  onValueChange={(value) => handleFilterChange('month', value)}
-                >
-                  <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue placeholder="Pilih Bulan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Bulan</SelectItem>
-                    {months.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filters.year}
-                  onValueChange={(value) => handleFilterChange('year', value)}
-                  disabled={filters.month === 'all'}
-                >
-                  <SelectTrigger className="w-full sm:w-[100px]">
-                    <SelectValue placeholder="Pilih Tahun" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((y) => (
-                      <SelectItem key={y.value} value={y.value}>
-                        {y.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {isBulkLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                  )}
+                  Approve Selected ({selectedCount})
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-4">
+              <Select
+                value={filters.approval_status}
+                onValueChange={(v) => handleFilterChange('approval_status', v)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Approval</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={filters.clientId}
+                onValueChange={(v) => handleFilterChange('clientId', v)}
+              >
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id.toString()}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filters.status}
+                onValueChange={(v) => handleFilterChange('status', v)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payment Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>
-            <AdminInvoicesTable
-              groupedInvoices={adminInvoices}
-              onUpdateStatus={handleUpdateStatusClick}
-              onView={handleViewClick}
-              isActionLoading={isActionLoading}
-            />
+            {loading.adminInvoices && adminInvoices.length === 0 ? (
+              <div className="flex justify-center items-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <AdminInvoicesTable
+                groupedInvoices={adminInvoices}
+                onView={handleViewClick}
+                onApprove={handleApprove}
+                onReject={handleRejectClick}
+                onUpdateStatus={handleUpdateStatusClick}
+                isActionLoading={isActionLoading}
+                selectedRows={selectedRows}
+                onRowSelect={handleSelectRow}
+                onSelectAll={handleSelectAll}
+              />
+            )}
           </CardContent>
         </Card>
 
-        {adminInvoicesPagination && adminInvoicesPagination.total_pages > 1 && (
-          <Pagination className="flex w-full justify-end">
+        {totalPages > 1 && (
+          <Pagination className="flex w-full justify-end mt-4">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
@@ -353,19 +400,77 @@ export default function AdminInvoicesPage() {
             </PaginationContent>
           </Pagination>
         )}
-
-        {selectedInvoice && (
-          <UpdateStatusDialog
-            isOpen={isUpdateDialogOpen}
-            onClose={handleUpdateDialogClose}
-            invoice={selectedInvoice}
-            onSuccess={() => {
-              refetchCurrentPage();
-              handleUpdateDialogClose();
-            }}
-          />
-        )}
       </div>
+
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Reject Invoice: {selectedInvoice?.invoice_number}
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejection. This will be recorded.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Reason..."
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRejectDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmReject}>Confirm Reject</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!viewingUrl}
+        onOpenChange={(open) => !open && setViewingUrl(null)}
+      >
+        <DialogContent className="max-w-4xl w-full h-[90vh] p-2 md:p-4 bg-transparent border-0 shadow-none focus-visible:outline-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Invoice Preview</DialogTitle>
+          </DialogHeader>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              className="absolute top-[-14px] right-[-14px] z-20 h-9 w-9 rounded-full p-0 bg-background border shadow-md hover:bg-muted"
+            >
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </DialogClose>
+          <Card className="w-full h-full">
+            <CardContent className="p-0 h-full overflow-hidden rounded-lg">
+              {viewingUrl && (
+                <iframe
+                  src={viewingUrl}
+                  className="w-full h-full border-0"
+                  title="Invoice Preview"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
+
+      {selectedInvoice && (
+        <UpdateStatusDialog
+          isOpen={isUpdateDialogOpen}
+          onClose={() => setIsUpdateDialogOpen(false)}
+          invoice={selectedInvoice}
+          onSuccess={() => {
+            refetchCurrentPage();
+            setIsUpdateDialogOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -330,3 +330,41 @@ export const getAdminDashboardData = async (): Promise<AdminDashboardData> => {
     );
   }
 };
+
+export const approveInvoice = async (invoiceId: number) => {
+  try {
+    const response = await axiosInstance.post(
+      `/invoices/admin/${invoiceId}/approve`
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to approve invoice'
+    );
+  }
+};
+
+export const rejectInvoice = async (invoiceId: number, reason: string) => {
+  try {
+    const response = await axiosInstance.post(
+      `/invoices/admin/${invoiceId}/reject`,
+      { reason }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to reject invoice');
+  }
+};
+
+export const approveAllInvoices = async (invoiceIds: number[]) => {
+  try {
+    const response = await axiosInstance.post('/invoices/admin/approve-all', {
+      invoice_ids: invoiceIds,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to bulk approve invoices'
+    );
+  }
+};
