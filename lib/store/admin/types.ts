@@ -66,6 +66,7 @@ export interface AdminInvoice {
   due_date: string;
   total_amount: number;
   status: string;
+  approval_status: string;
   proof_of_payment_url: string | null;
 }
 export interface GroupedAdminInvoices {
@@ -93,6 +94,7 @@ export interface PaginatedGwContractsResponse {
 
 export interface AdminInvoiceParams {
   status?: string | null;
+  approval_status?: string | null;
   clientId?: number | null;
   month?: number | null;
   year?: number | null;
@@ -140,6 +142,7 @@ export interface AdminState {
   dashboardStats: AdminDashboardStats | null;
   upcomingRenewals: UpcomingRenewal[];
   recentInvoices: RecentInvoice[];
+  lastInvoiceParams: AdminInvoiceParams;
 
   hasFetched: {
     users: boolean;
@@ -161,7 +164,11 @@ export interface AdminState {
 
   fetchUsers: () => Promise<void>;
   fetchClients: () => Promise<void>;
-  fetchAdminDashboardData: () => Promise<void>; // Ganti nama fetchStats
+  fetchAdminDashboardData: () => Promise<void>;
+
+  approveInvoice: (invoiceId: number) => Promise<void>;
+  rejectInvoice: (invoiceId: number, reason: string) => Promise<void>;
+  approveAllInvoices: (invoiceIds: number[]) => Promise<void>;
 
   fetchContracts: (
     month?: number | null,
