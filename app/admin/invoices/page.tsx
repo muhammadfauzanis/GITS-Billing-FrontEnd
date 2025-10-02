@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { X, Loader2, ShieldCheck } from 'lucide-react';
+import { X, Loader2, ShieldCheck, Rocket } from 'lucide-react'; // Diubah: Menambahkan Rocket
 import { getInvoiceViewUrl } from '@/lib/api/invoices';
 import { generatePagination } from '@/lib/utils';
 
@@ -57,6 +57,7 @@ export default function AdminInvoicesPage() {
     approveInvoice,
     rejectInvoice,
     approveAllInvoices,
+    triggerGenerateInvoices, // Ditambahkan: Mengambil action baru dari store
     loading,
   } = useAdminStore();
   const { toast } = useToast();
@@ -72,6 +73,7 @@ export default function AdminInvoicesPage() {
   const [isActionLoading, setIsActionLoading] = useState<number | null>(null);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+  const [isGenerating, setIsGenerating] = useState(false); // Ditambahkan: State untuk loading generate
 
   const [filters, setFilters] = useState({
     status: 'all',
@@ -227,6 +229,26 @@ export default function AdminInvoicesPage() {
     setFilters((f) => ({ ...f, [type]: value }));
   };
 
+  // Ditambahkan: Handler untuk tombol Generate Invoices
+  const handleGenerateInvoices = async () => {
+    setIsGenerating(true);
+    try {
+      await triggerGenerateInvoices();
+      toast({
+        title: 'Proses Dimulai',
+        description: 'Pembuatan semua invoice telah dimulai di background.',
+      });
+    } catch (e: any) {
+      toast({
+        title: 'Gagal Memulai Proses',
+        description: e.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const months = useMemo(
     () =>
       Array.from({ length: 12 }, (_, i) => ({
@@ -254,6 +276,15 @@ export default function AdminInvoicesPage() {
           <h2 className="text-3xl font-bold tracking-tight">
             Invoice Management
           </h2>
+          {/* Ditambahkan: Tombol Generate Invoices */}
+          <Button onClick={handleGenerateInvoices} disabled={isGenerating}>
+            {isGenerating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Rocket className="mr-2 h-4 w-4" />
+            )}
+            Generate Invoices
+          </Button>
         </div>
 
         <Card>

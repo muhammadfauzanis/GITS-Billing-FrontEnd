@@ -368,3 +368,16 @@ export const approveAllInvoices = async (invoiceIds: number[]) => {
     );
   }
 };
+
+export const triggerGenerateInvoices = async () => {
+  try {
+    const response = await axiosInstance.post(
+      '/invoices/admin/generate-all-invoices'
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.detail || 'Failed to trigger invoice generation'
+    );
+  }
+};
