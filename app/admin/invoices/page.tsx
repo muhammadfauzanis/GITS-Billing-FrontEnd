@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { X, Loader2, ShieldCheck, Rocket } from 'lucide-react'; // Diubah: Menambahkan Rocket
+import { X, Loader2, ShieldCheck, Rocket } from 'lucide-react';
 import { getInvoiceViewUrl } from '@/lib/api/invoices';
 import { generatePagination } from '@/lib/utils';
 
@@ -57,7 +57,7 @@ export default function AdminInvoicesPage() {
     approveInvoice,
     rejectInvoice,
     approveAllInvoices,
-    triggerGenerateInvoices, // Ditambahkan: Mengambil action baru dari store
+    triggerGenerateInvoices,
     loading,
   } = useAdminStore();
   const { toast } = useToast();
@@ -70,10 +70,10 @@ export default function AdminInvoicesPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
-  const [isActionLoading, setIsActionLoading] = useState<number | null>(null);
+  const [processingIds, setProcessingIds] = useState<number[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
-  const [isGenerating, setIsGenerating] = useState(false); // Ditambahkan: State untuk loading generate
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [filters, setFilters] = useState({
     status: 'all',
@@ -107,6 +107,7 @@ export default function AdminInvoicesPage() {
   }, [filters, currentPage]);
 
   const handleApprove = async (invoiceId: number) => {
+    setProcessingIds((prev) => [...prev, invoiceId]);
     try {
       await approveInvoice(invoiceId);
       toast({
@@ -120,6 +121,8 @@ export default function AdminInvoicesPage() {
         description: e.message,
         variant: 'destructive',
       });
+    } finally {
+      setProcessingIds((prev) => prev.filter((id) => id !== invoiceId));
     }
   };
 
@@ -129,7 +132,8 @@ export default function AdminInvoicesPage() {
   };
 
   const handleConfirmReject = async () => {
-    if (!selectedInvoice || !rejectionReason.trim()) {
+    if (!selectedInvoice) return;
+    if (!rejectionReason.trim()) {
       toast({
         title: 'Validation Error',
         description: 'Reason for rejection cannot be empty.',
@@ -137,11 +141,11 @@ export default function AdminInvoicesPage() {
       });
       return;
     }
+    setProcessingIds((prev) => [...prev, selectedInvoice.id]);
+    setIsRejectDialogOpen(false);
     try {
       await rejectInvoice(selectedInvoice.id, rejectionReason);
       toast({ title: 'Success', description: `Invoice has been rejected.` });
-      setIsRejectDialogOpen(false);
-      setRejectionReason('');
       refetchCurrentPage();
     } catch (e: any) {
       toast({
@@ -149,6 +153,11 @@ export default function AdminInvoicesPage() {
         description: e.message,
         variant: 'destructive',
       });
+    } finally {
+      setProcessingIds((prev) =>
+        prev.filter((id) => id !== selectedInvoice.id)
+      );
+      setRejectionReason('');
     }
   };
 
@@ -158,7 +167,7 @@ export default function AdminInvoicesPage() {
   };
 
   const handleViewClick = async (invoiceId: number) => {
-    setIsActionLoading(invoiceId);
+    setProcessingIds((prev) => [...prev, invoiceId]);
     try {
       const data = await getInvoiceViewUrl(invoiceId);
       if (data.url) setViewingUrl(data.url);
@@ -169,7 +178,7 @@ export default function AdminInvoicesPage() {
         variant: 'destructive',
       });
     } finally {
-      setIsActionLoading(null);
+      setProcessingIds((prev) => prev.filter((id) => id !== invoiceId));
     }
   };
 
@@ -182,11 +191,9 @@ export default function AdminInvoicesPage() {
       .flatMap((group) => group.invoices)
       .filter((inv) => inv.approval_status === 'draft')
       .map((inv) => inv.id);
-
     const isAllSelected =
       allDraftIdsInView.length > 0 &&
       allDraftIdsInView.every((id) => selectedRows[id]);
-
     const newSelection: Record<string, boolean> = {};
     if (!isAllSelected) {
       allDraftIdsInView.forEach((id) => {
@@ -229,7 +236,6 @@ export default function AdminInvoicesPage() {
     setFilters((f) => ({ ...f, [type]: value }));
   };
 
-  // Ditambahkan: Handler untuk tombol Generate Invoices
   const handleGenerateInvoices = async () => {
     setIsGenerating(true);
     try {
@@ -249,22 +255,6 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  const months = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, i) => ({
-        value: (i + 1).toString(),
-        label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
-      })),
-    []
-  );
-  const years = useMemo(
-    () =>
-      Array.from({ length: 4 }, (_, i) => ({
-        value: String(new Date().getFullYear() - 1 + i),
-        label: String(new Date().getFullYear() - 1 + i),
-      })),
-    []
-  );
   const totalPages = adminInvoicesPagination?.total_pages || 1;
   const pageNumbers = generatePagination(currentPage, totalPages);
   const selectedCount = Object.values(selectedRows).filter(Boolean).length;
@@ -276,7 +266,6 @@ export default function AdminInvoicesPage() {
           <h2 className="text-3xl font-bold tracking-tight">
             Invoice Management
           </h2>
-          {/* Ditambahkan: Tombol Generate Invoices */}
           <Button onClick={handleGenerateInvoices} disabled={isGenerating}>
             {isGenerating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -370,7 +359,7 @@ export default function AdminInvoicesPage() {
                 onApprove={handleApprove}
                 onReject={handleRejectClick}
                 onUpdateStatus={handleUpdateStatusClick}
-                isActionLoading={isActionLoading}
+                isActionLoading={processingIds}
                 selectedRows={selectedRows}
                 onRowSelect={handleSelectRow}
                 onSelectAll={handleSelectAll}

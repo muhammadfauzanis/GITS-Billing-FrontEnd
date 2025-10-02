@@ -22,11 +22,11 @@ interface AdminInvoicesTableProps {
   onView: (invoiceId: number) => void;
   onApprove: (invoiceId: number) => void;
   onReject: (invoice: AdminInvoice) => void;
-  isActionLoading: number | null;
+  onUpdateStatus: (invoice: AdminInvoice) => void;
+  isActionLoading: number[];
   selectedRows: Record<string, boolean>;
   onRowSelect: (id: number) => void;
   onSelectAll: () => void;
-  onUpdateStatus: (invoice: AdminInvoice) => void;
 }
 
 const paymentStatusStyles: { [key: string]: string } = {
@@ -47,11 +47,11 @@ export const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({
   onView,
   onApprove,
   onReject,
+  onUpdateStatus,
   isActionLoading,
   selectedRows,
   onRowSelect,
   onSelectAll,
-  onUpdateStatus,
 }) => {
   const allDraftIdsInView = groupedInvoices
     .flatMap((group) => group.invoices)
@@ -91,111 +91,118 @@ export const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({
               <React.Fragment key={group.month}>
                 <TableRow className="bg-muted hover:bg-muted">
                   <TableCell
-                    colSpan={9} // Disesuaikan menjadi 9 kolom
+                    colSpan={9}
                     className="py-2 px-4 font-semibold text-muted-foreground"
                   >
                     {group.month}
                   </TableCell>
                 </TableRow>
-                {group.invoices.map((invoice) => (
-                  <TableRow
-                    key={invoice.id}
-                    data-state={selectedRows[invoice.id] && 'selected'}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedRows[invoice.id] || false}
-                        onCheckedChange={() => onRowSelect(invoice.id)}
-                        disabled={invoice.approval_status !== 'draft'}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {invoice.invoice_number}
-                    </TableCell>
-                    <TableCell>{invoice.client_name}</TableCell>
-                    <TableCell>
-                      {formatMonthOnly(invoice.invoice_period)}
-                    </TableCell>
-                    <TableCell>{formatDate(invoice.due_date)}</TableCell>
-                    <TableCell>
-                      {formatCurrency(invoice.total_amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'capitalize whitespace-nowrap',
-                          approvalStatusStyles[
-                            invoice.approval_status.toLowerCase()
-                          ] || ''
-                        )}
-                      >
-                        {invoice.approval_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'capitalize whitespace-nowrap',
-                          paymentStatusStyles[invoice.status.toLowerCase()] ||
-                            ''
-                        )}
-                      >
-                        {invoice.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onUpdateStatus(invoice)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onView(invoice.id)}
-                          disabled={isActionLoading === invoice.id}
-                        >
-                          {isActionLoading === invoice.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
+                {group.invoices.map((invoice) => {
+                  const isProcessing = isActionLoading.includes(invoice.id);
+                  return (
+                    <TableRow
+                      key={invoice.id}
+                      data-state={selectedRows[invoice.id] && 'selected'}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedRows[invoice.id] || false}
+                          onCheckedChange={() => onRowSelect(invoice.id)}
+                          disabled={invoice.approval_status !== 'draft'}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {invoice.invoice_number}
+                      </TableCell>
+                      <TableCell>{invoice.client_name}</TableCell>
+                      <TableCell>
+                        {formatMonthOnly(invoice.invoice_period)}
+                      </TableCell>
+                      <TableCell>{formatDate(invoice.due_date)}</TableCell>
+                      <TableCell>
+                        {formatCurrency(invoice.total_amount)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'capitalize whitespace-nowrap',
+                            approvalStatusStyles[
+                              invoice.approval_status.toLowerCase()
+                            ] || ''
                           )}
-                        </Button>
-                        {invoice.approval_status === 'draft' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-green-600 hover:text-green-700"
-                              onClick={() => onApprove(invoice.id)}
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => onReject(invoice)}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        >
+                          {invoice.approval_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'capitalize whitespace-nowrap',
+                            paymentStatusStyles[invoice.status.toLowerCase()] ||
+                              ''
+                          )}
+                        >
+                          {invoice.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end items-center gap-1 min-h-[40px]">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onView(invoice.id)}
+                            disabled={isProcessing}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onUpdateStatus(invoice)}
+                            disabled={isProcessing}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+
+                          {isProcessing ? (
+                            <div className="flex items-center justify-center w-[72px]">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </div>
+                          ) : (
+                            invoice.approval_status === 'draft' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-green-600 hover:text-green-700"
+                                  onClick={() => onApprove(invoice.id)}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => onReject(invoice)}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </React.Fragment>
             ))
           ) : (
             <TableRow>
               <TableCell colSpan={9} className="h-24 text-center">
-                Tidak ada invoice ditemukan.
+                No invoices found.
               </TableCell>
             </TableRow>
           )}
