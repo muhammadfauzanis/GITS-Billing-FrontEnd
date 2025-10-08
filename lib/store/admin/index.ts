@@ -20,6 +20,7 @@ import {
   approveInvoice as apiApproveInvoice,
   rejectInvoice as apiRejectInvoice,
   approveAllInvoices as apiApproveAllInvoices,
+  triggerGenerateInvoices,
 } from '../../api';
 import { contractFormToFormData, gwContractFormToFormData } from '../../utils';
 import {
@@ -282,5 +283,9 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   approveAllInvoices: async (invoiceIds: number[]) => {
     await apiApproveAllInvoices(invoiceIds);
     await get().fetchAdminInvoices(get().lastInvoiceParams);
+  },
+
+  triggerGenerateInvoices: async () => {
+    await triggerGenerateInvoices();
   },
 }));

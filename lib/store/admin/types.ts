@@ -170,6 +170,8 @@ export interface AdminState {
   rejectInvoice: (invoiceId: number, reason: string) => Promise<void>;
   approveAllInvoices: (invoiceIds: number[]) => Promise<void>;
 
+  triggerGenerateInvoices: () => Promise<void>;
+
   fetchContracts: (
     month?: number | null,
     year?: number | null,
